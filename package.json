@@ -1,0 +1,19 @@
+{
+	"name": "poc-persists-data",
+	"type": "module",
+	"private": true,
+	"scripts": {
+		"format": "biome format --write .",
+		"lint:fix": "biome check --write ."
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.5.14",
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		"dockdi": "^1.0.2"
+	}
+}
