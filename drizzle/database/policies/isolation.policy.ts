@@ -7,7 +7,6 @@ export class IsolationPolicy {
 	static tenant(tenantId: AnyPgColumn) {
 		const predicate = sql`${tenantId} = current_setting('app.tenant_id', true)::uuid`;
 
-		// permissive: con sólo policies restrictive Postgres niega todas las filas
 		return pgPolicy("tenant_isolation", {
 			as: "permissive",
 			for: "all",

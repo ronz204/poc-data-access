@@ -1,748 +1,685 @@
 {
-  "version": "8",
-  "dialect": "postgres",
-  "id": "56b482ec-641f-4c56-8be9-6f1b27251a3f",
-  "prevIds": [
-    "00000000-0000-0000-0000-000000000000"
-  ],
-  "ddl": [
-    {
-      "values": [
-        "owner",
-        "admin",
-        "member"
-      ],
-      "name": "member_role",
-      "entityType": "enums",
-      "schema": "core"
-    },
-    {
-      "values": [
-        "free",
-        "pro"
-      ],
-      "name": "tenant_plan",
-      "entityType": "enums",
-      "schema": "core"
-    },
-    {
-      "values": [
-        "active",
-        "suspended"
-      ],
-      "name": "tenant_status",
-      "entityType": "enums",
-      "schema": "core"
-    },
-    {
-      "isRlsEnabled": true,
-      "name": "memberships",
-      "entityType": "tables",
-      "schema": "core"
-    },
-    {
-      "isRlsEnabled": true,
-      "name": "projects",
-      "entityType": "tables",
-      "schema": "core"
-    },
-    {
-      "isRlsEnabled": true,
-      "name": "tasks",
-      "entityType": "tables",
-      "schema": "core"
-    },
-    {
-      "isRlsEnabled": true,
-      "name": "tenants",
-      "entityType": "tables",
-      "schema": "core"
-    },
-    {
-      "isRlsEnabled": false,
-      "name": "users",
-      "entityType": "tables",
-      "schema": "core"
-    },
-    {
-      "type": "uuid",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "tenant_id",
-      "entityType": "columns",
-      "schema": "core",
-      "table": "memberships"
-    },
-    {
-      "type": "uuid",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "user_id",
-      "entityType": "columns",
-      "schema": "core",
-      "table": "memberships"
-    },
-    {
-      "type": "member_role",
-      "typeSchema": "core",
-      "notNull": true,
-      "dimensions": 0,
-      "default": "'member'",
-      "generated": null,
-      "identity": null,
-      "name": "role",
-      "entityType": "columns",
-      "schema": "core",
-      "table": "memberships"
-    },
-    {
-      "type": "timestamp with time zone",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": "now()",
-      "generated": null,
-      "identity": null,
-      "name": "created_at",
-      "entityType": "columns",
-      "schema": "core",
-      "table": "memberships"
-    },
-    {
-      "type": "uuid",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "id",
-      "entityType": "columns",
-      "schema": "core",
-      "table": "projects"
-    },
-    {
-      "type": "uuid",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "tenant_id",
-      "entityType": "columns",
-      "schema": "core",
-      "table": "projects"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "name",
-      "entityType": "columns",
-      "schema": "core",
-      "table": "projects"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "slug",
-      "entityType": "columns",
-      "schema": "core",
-      "table": "projects"
-    },
-    {
-      "type": "timestamp with time zone",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": "now()",
-      "generated": null,
-      "identity": null,
-      "name": "created_at",
-      "entityType": "columns",
-      "schema": "core",
-      "table": "projects"
-    },
-    {
-      "type": "uuid",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "id",
-      "entityType": "columns",
-      "schema": "core",
-      "table": "tasks"
-    },
-    {
-      "type": "uuid",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "tenant_id",
-      "entityType": "columns",
-      "schema": "core",
-      "table": "tasks"
-    },
-    {
-      "type": "uuid",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "project_id",
-      "entityType": "columns",
-      "schema": "core",
-      "table": "tasks"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "title",
-      "entityType": "columns",
-      "schema": "core",
-      "table": "tasks"
-    },
-    {
-      "type": "boolean",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": "false",
-      "generated": null,
-      "identity": null,
-      "name": "done",
-      "entityType": "columns",
-      "schema": "core",
-      "table": "tasks"
-    },
-    {
-      "type": "timestamp with time zone",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": "now()",
-      "generated": null,
-      "identity": null,
-      "name": "created_at",
-      "entityType": "columns",
-      "schema": "core",
-      "table": "tasks"
-    },
-    {
-      "type": "uuid",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "id",
-      "entityType": "columns",
-      "schema": "core",
-      "table": "tenants"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "name",
-      "entityType": "columns",
-      "schema": "core",
-      "table": "tenants"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "slug",
-      "entityType": "columns",
-      "schema": "core",
-      "table": "tenants"
-    },
-    {
-      "type": "tenant_plan",
-      "typeSchema": "core",
-      "notNull": true,
-      "dimensions": 0,
-      "default": "'free'",
-      "generated": null,
-      "identity": null,
-      "name": "plan",
-      "entityType": "columns",
-      "schema": "core",
-      "table": "tenants"
-    },
-    {
-      "type": "tenant_status",
-      "typeSchema": "core",
-      "notNull": true,
-      "dimensions": 0,
-      "default": "'active'",
-      "generated": null,
-      "identity": null,
-      "name": "status",
-      "entityType": "columns",
-      "schema": "core",
-      "table": "tenants"
-    },
-    {
-      "type": "timestamp with time zone",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": "now()",
-      "generated": null,
-      "identity": null,
-      "name": "created_at",
-      "entityType": "columns",
-      "schema": "core",
-      "table": "tenants"
-    },
-    {
-      "type": "uuid",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "id",
-      "entityType": "columns",
-      "schema": "core",
-      "table": "users"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "email",
-      "entityType": "columns",
-      "schema": "core",
-      "table": "users"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "name",
-      "entityType": "columns",
-      "schema": "core",
-      "table": "users"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "password_hash",
-      "entityType": "columns",
-      "schema": "core",
-      "table": "users"
-    },
-    {
-      "type": "timestamp with time zone",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": "now()",
-      "generated": null,
-      "identity": null,
-      "name": "created_at",
-      "entityType": "columns",
-      "schema": "core",
-      "table": "users"
-    },
-    {
-      "nameExplicit": true,
-      "columns": [
-        {
-          "value": "user_id",
-          "isExpression": false,
-          "asc": true,
-          "nullsFirst": false,
-          "opclass": null
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "with": "",
-      "method": "btree",
-      "concurrently": false,
-      "name": "memberships_user_id_idx",
-      "entityType": "indexes",
-      "schema": "core",
-      "table": "memberships"
-    },
-    {
-      "nameExplicit": true,
-      "columns": [
-        {
-          "value": "tenant_id",
-          "isExpression": false,
-          "asc": true,
-          "nullsFirst": false,
-          "opclass": null
-        },
-        {
-          "value": "created_at",
-          "isExpression": false,
-          "asc": true,
-          "nullsFirst": false,
-          "opclass": null
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "with": "",
-      "method": "btree",
-      "concurrently": false,
-      "name": "projects_tenant_id_created_at_idx",
-      "entityType": "indexes",
-      "schema": "core",
-      "table": "projects"
-    },
-    {
-      "nameExplicit": true,
-      "columns": [
-        {
-          "value": "tenant_id",
-          "isExpression": false,
-          "asc": true,
-          "nullsFirst": false,
-          "opclass": null
-        },
-        {
-          "value": "project_id",
-          "isExpression": false,
-          "asc": true,
-          "nullsFirst": false,
-          "opclass": null
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "with": "",
-      "method": "btree",
-      "concurrently": false,
-      "name": "tasks_tenant_id_project_id_idx",
-      "entityType": "indexes",
-      "schema": "core",
-      "table": "tasks"
-    },
-    {
-      "nameExplicit": true,
-      "columns": [
-        {
-          "value": "tenant_id",
-          "isExpression": false,
-          "asc": true,
-          "nullsFirst": false,
-          "opclass": null
-        },
-        {
-          "value": "created_at",
-          "isExpression": false,
-          "asc": true,
-          "nullsFirst": false,
-          "opclass": null
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "with": "",
-      "method": "btree",
-      "concurrently": false,
-      "name": "tasks_tenant_id_created_at_idx",
-      "entityType": "indexes",
-      "schema": "core",
-      "table": "tasks"
-    },
-    {
-      "nameExplicit": false,
-      "columns": [
-        "tenant_id"
-      ],
-      "schemaTo": "core",
-      "tableTo": "tenants",
-      "columnsTo": [
-        "id"
-      ],
-      "onUpdate": "NO ACTION",
-      "onDelete": "CASCADE",
-      "name": "memberships_tenant_id_tenants_id_fkey",
-      "entityType": "fks",
-      "schema": "core",
-      "table": "memberships"
-    },
-    {
-      "nameExplicit": false,
-      "columns": [
-        "user_id"
-      ],
-      "schemaTo": "core",
-      "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
-      "onUpdate": "NO ACTION",
-      "onDelete": "CASCADE",
-      "name": "memberships_user_id_users_id_fkey",
-      "entityType": "fks",
-      "schema": "core",
-      "table": "memberships"
-    },
-    {
-      "nameExplicit": false,
-      "columns": [
-        "tenant_id"
-      ],
-      "schemaTo": "core",
-      "tableTo": "tenants",
-      "columnsTo": [
-        "id"
-      ],
-      "onUpdate": "NO ACTION",
-      "onDelete": "CASCADE",
-      "name": "projects_tenant_id_tenants_id_fkey",
-      "entityType": "fks",
-      "schema": "core",
-      "table": "projects"
-    },
-    {
-      "nameExplicit": false,
-      "columns": [
-        "tenant_id"
-      ],
-      "schemaTo": "core",
-      "tableTo": "tenants",
-      "columnsTo": [
-        "id"
-      ],
-      "onUpdate": "NO ACTION",
-      "onDelete": "CASCADE",
-      "name": "tasks_tenant_id_tenants_id_fkey",
-      "entityType": "fks",
-      "schema": "core",
-      "table": "tasks"
-    },
-    {
-      "nameExplicit": true,
-      "columns": [
-        "tenant_id",
-        "project_id"
-      ],
-      "schemaTo": "core",
-      "tableTo": "projects",
-      "columnsTo": [
-        "tenant_id",
-        "id"
-      ],
-      "onUpdate": "NO ACTION",
-      "onDelete": "CASCADE",
-      "name": "tasks_tenant_id_project_id_fkey",
-      "entityType": "fks",
-      "schema": "core",
-      "table": "tasks"
-    },
-    {
-      "columns": [
-        "tenant_id",
-        "user_id"
-      ],
-      "nameExplicit": false,
-      "name": "memberships_pkey",
-      "entityType": "pks",
-      "schema": "core",
-      "table": "memberships"
-    },
-    {
-      "columns": [
-        "id"
-      ],
-      "nameExplicit": false,
-      "name": "projects_pkey",
-      "schema": "core",
-      "table": "projects",
-      "entityType": "pks"
-    },
-    {
-      "columns": [
-        "id"
-      ],
-      "nameExplicit": false,
-      "name": "tasks_pkey",
-      "schema": "core",
-      "table": "tasks",
-      "entityType": "pks"
-    },
-    {
-      "columns": [
-        "id"
-      ],
-      "nameExplicit": false,
-      "name": "tenants_pkey",
-      "schema": "core",
-      "table": "tenants",
-      "entityType": "pks"
-    },
-    {
-      "columns": [
-        "id"
-      ],
-      "nameExplicit": false,
-      "name": "users_pkey",
-      "schema": "core",
-      "table": "users",
-      "entityType": "pks"
-    },
-    {
-      "nameExplicit": true,
-      "columns": [
-        "tenant_id",
-        "slug"
-      ],
-      "nullsNotDistinct": false,
-      "name": "projects_tenant_id_slug_key",
-      "entityType": "uniques",
-      "schema": "core",
-      "table": "projects"
-    },
-    {
-      "nameExplicit": true,
-      "columns": [
-        "tenant_id",
-        "id"
-      ],
-      "nullsNotDistinct": false,
-      "name": "projects_tenant_id_id_key",
-      "entityType": "uniques",
-      "schema": "core",
-      "table": "projects"
-    },
-    {
-      "nameExplicit": false,
-      "columns": [
-        "slug"
-      ],
-      "nullsNotDistinct": false,
-      "name": "tenants_slug_key",
-      "schema": "core",
-      "table": "tenants",
-      "entityType": "uniques"
-    },
-    {
-      "nameExplicit": false,
-      "columns": [
-        "email"
-      ],
-      "nullsNotDistinct": false,
-      "name": "users_email_key",
-      "schema": "core",
-      "table": "users",
-      "entityType": "uniques"
-    },
-    {
-      "as": "PERMISSIVE",
-      "for": "ALL",
-      "roles": [
-        "runner"
-      ],
-      "using": "\"core\".\"memberships\".\"tenant_id\" = current_setting('app.tenant_id', true)::uuid",
-      "withCheck": "\"core\".\"memberships\".\"tenant_id\" = current_setting('app.tenant_id', true)::uuid",
-      "name": "tenant_isolation",
-      "entityType": "policies",
-      "schema": "core",
-      "table": "memberships"
-    },
-    {
-      "as": "PERMISSIVE",
-      "for": "ALL",
-      "roles": [
-        "runner"
-      ],
-      "using": "\"core\".\"projects\".\"tenant_id\" = current_setting('app.tenant_id', true)::uuid",
-      "withCheck": "\"core\".\"projects\".\"tenant_id\" = current_setting('app.tenant_id', true)::uuid",
-      "name": "tenant_isolation",
-      "entityType": "policies",
-      "schema": "core",
-      "table": "projects"
-    },
-    {
-      "as": "PERMISSIVE",
-      "for": "ALL",
-      "roles": [
-        "runner"
-      ],
-      "using": "\"core\".\"tasks\".\"tenant_id\" = current_setting('app.tenant_id', true)::uuid",
-      "withCheck": "\"core\".\"tasks\".\"tenant_id\" = current_setting('app.tenant_id', true)::uuid",
-      "name": "tenant_isolation",
-      "entityType": "policies",
-      "schema": "core",
-      "table": "tasks"
-    },
-    {
-      "as": "PERMISSIVE",
-      "for": "ALL",
-      "roles": [
-        "runner"
-      ],
-      "using": "\"core\".\"tenants\".\"id\" = current_setting('app.tenant_id', true)::uuid",
-      "withCheck": "\"core\".\"tenants\".\"id\" = current_setting('app.tenant_id', true)::uuid",
-      "name": "tenant_isolation",
-      "entityType": "policies",
-      "schema": "core",
-      "table": "tenants"
-    }
-  ],
-  "renames": []
+	"version": "8",
+	"dialect": "postgres",
+	"id": "56b482ec-641f-4c56-8be9-6f1b27251a3f",
+	"prevIds": ["00000000-0000-0000-0000-000000000000"],
+	"ddl": [
+		{
+			"values": ["owner", "admin", "member"],
+			"name": "member_role",
+			"entityType": "enums",
+			"schema": "core"
+		},
+		{
+			"values": ["free", "pro"],
+			"name": "tenant_plan",
+			"entityType": "enums",
+			"schema": "core"
+		},
+		{
+			"values": ["active", "suspended"],
+			"name": "tenant_status",
+			"entityType": "enums",
+			"schema": "core"
+		},
+		{
+			"isRlsEnabled": true,
+			"name": "memberships",
+			"entityType": "tables",
+			"schema": "core"
+		},
+		{
+			"isRlsEnabled": true,
+			"name": "projects",
+			"entityType": "tables",
+			"schema": "core"
+		},
+		{
+			"isRlsEnabled": true,
+			"name": "tasks",
+			"entityType": "tables",
+			"schema": "core"
+		},
+		{
+			"isRlsEnabled": true,
+			"name": "tenants",
+			"entityType": "tables",
+			"schema": "core"
+		},
+		{
+			"isRlsEnabled": false,
+			"name": "users",
+			"entityType": "tables",
+			"schema": "core"
+		},
+		{
+			"type": "uuid",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "tenant_id",
+			"entityType": "columns",
+			"schema": "core",
+			"table": "memberships"
+		},
+		{
+			"type": "uuid",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "user_id",
+			"entityType": "columns",
+			"schema": "core",
+			"table": "memberships"
+		},
+		{
+			"type": "member_role",
+			"typeSchema": "core",
+			"notNull": true,
+			"dimensions": 0,
+			"default": "'member'",
+			"generated": null,
+			"identity": null,
+			"name": "role",
+			"entityType": "columns",
+			"schema": "core",
+			"table": "memberships"
+		},
+		{
+			"type": "timestamp with time zone",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": "now()",
+			"generated": null,
+			"identity": null,
+			"name": "created_at",
+			"entityType": "columns",
+			"schema": "core",
+			"table": "memberships"
+		},
+		{
+			"type": "uuid",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "id",
+			"entityType": "columns",
+			"schema": "core",
+			"table": "projects"
+		},
+		{
+			"type": "uuid",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "tenant_id",
+			"entityType": "columns",
+			"schema": "core",
+			"table": "projects"
+		},
+		{
+			"type": "text",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "name",
+			"entityType": "columns",
+			"schema": "core",
+			"table": "projects"
+		},
+		{
+			"type": "text",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "slug",
+			"entityType": "columns",
+			"schema": "core",
+			"table": "projects"
+		},
+		{
+			"type": "timestamp with time zone",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": "now()",
+			"generated": null,
+			"identity": null,
+			"name": "created_at",
+			"entityType": "columns",
+			"schema": "core",
+			"table": "projects"
+		},
+		{
+			"type": "uuid",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "id",
+			"entityType": "columns",
+			"schema": "core",
+			"table": "tasks"
+		},
+		{
+			"type": "uuid",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "tenant_id",
+			"entityType": "columns",
+			"schema": "core",
+			"table": "tasks"
+		},
+		{
+			"type": "uuid",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "project_id",
+			"entityType": "columns",
+			"schema": "core",
+			"table": "tasks"
+		},
+		{
+			"type": "text",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "title",
+			"entityType": "columns",
+			"schema": "core",
+			"table": "tasks"
+		},
+		{
+			"type": "boolean",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": "false",
+			"generated": null,
+			"identity": null,
+			"name": "done",
+			"entityType": "columns",
+			"schema": "core",
+			"table": "tasks"
+		},
+		{
+			"type": "timestamp with time zone",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": "now()",
+			"generated": null,
+			"identity": null,
+			"name": "created_at",
+			"entityType": "columns",
+			"schema": "core",
+			"table": "tasks"
+		},
+		{
+			"type": "uuid",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "id",
+			"entityType": "columns",
+			"schema": "core",
+			"table": "tenants"
+		},
+		{
+			"type": "text",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "name",
+			"entityType": "columns",
+			"schema": "core",
+			"table": "tenants"
+		},
+		{
+			"type": "text",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "slug",
+			"entityType": "columns",
+			"schema": "core",
+			"table": "tenants"
+		},
+		{
+			"type": "tenant_plan",
+			"typeSchema": "core",
+			"notNull": true,
+			"dimensions": 0,
+			"default": "'free'",
+			"generated": null,
+			"identity": null,
+			"name": "plan",
+			"entityType": "columns",
+			"schema": "core",
+			"table": "tenants"
+		},
+		{
+			"type": "tenant_status",
+			"typeSchema": "core",
+			"notNull": true,
+			"dimensions": 0,
+			"default": "'active'",
+			"generated": null,
+			"identity": null,
+			"name": "status",
+			"entityType": "columns",
+			"schema": "core",
+			"table": "tenants"
+		},
+		{
+			"type": "timestamp with time zone",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": "now()",
+			"generated": null,
+			"identity": null,
+			"name": "created_at",
+			"entityType": "columns",
+			"schema": "core",
+			"table": "tenants"
+		},
+		{
+			"type": "uuid",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "id",
+			"entityType": "columns",
+			"schema": "core",
+			"table": "users"
+		},
+		{
+			"type": "text",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "email",
+			"entityType": "columns",
+			"schema": "core",
+			"table": "users"
+		},
+		{
+			"type": "text",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "name",
+			"entityType": "columns",
+			"schema": "core",
+			"table": "users"
+		},
+		{
+			"type": "text",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "password_hash",
+			"entityType": "columns",
+			"schema": "core",
+			"table": "users"
+		},
+		{
+			"type": "timestamp with time zone",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": "now()",
+			"generated": null,
+			"identity": null,
+			"name": "created_at",
+			"entityType": "columns",
+			"schema": "core",
+			"table": "users"
+		},
+		{
+			"nameExplicit": true,
+			"columns": [
+				{
+					"value": "user_id",
+					"isExpression": false,
+					"asc": true,
+					"nullsFirst": false,
+					"opclass": null
+				}
+			],
+			"isUnique": false,
+			"where": null,
+			"with": "",
+			"method": "btree",
+			"concurrently": false,
+			"name": "memberships_user_id_idx",
+			"entityType": "indexes",
+			"schema": "core",
+			"table": "memberships"
+		},
+		{
+			"nameExplicit": true,
+			"columns": [
+				{
+					"value": "tenant_id",
+					"isExpression": false,
+					"asc": true,
+					"nullsFirst": false,
+					"opclass": null
+				},
+				{
+					"value": "created_at",
+					"isExpression": false,
+					"asc": true,
+					"nullsFirst": false,
+					"opclass": null
+				}
+			],
+			"isUnique": false,
+			"where": null,
+			"with": "",
+			"method": "btree",
+			"concurrently": false,
+			"name": "projects_tenant_id_created_at_idx",
+			"entityType": "indexes",
+			"schema": "core",
+			"table": "projects"
+		},
+		{
+			"nameExplicit": true,
+			"columns": [
+				{
+					"value": "tenant_id",
+					"isExpression": false,
+					"asc": true,
+					"nullsFirst": false,
+					"opclass": null
+				},
+				{
+					"value": "project_id",
+					"isExpression": false,
+					"asc": true,
+					"nullsFirst": false,
+					"opclass": null
+				}
+			],
+			"isUnique": false,
+			"where": null,
+			"with": "",
+			"method": "btree",
+			"concurrently": false,
+			"name": "tasks_tenant_id_project_id_idx",
+			"entityType": "indexes",
+			"schema": "core",
+			"table": "tasks"
+		},
+		{
+			"nameExplicit": true,
+			"columns": [
+				{
+					"value": "tenant_id",
+					"isExpression": false,
+					"asc": true,
+					"nullsFirst": false,
+					"opclass": null
+				},
+				{
+					"value": "created_at",
+					"isExpression": false,
+					"asc": true,
+					"nullsFirst": false,
+					"opclass": null
+				}
+			],
+			"isUnique": false,
+			"where": null,
+			"with": "",
+			"method": "btree",
+			"concurrently": false,
+			"name": "tasks_tenant_id_created_at_idx",
+			"entityType": "indexes",
+			"schema": "core",
+			"table": "tasks"
+		},
+		{
+			"nameExplicit": false,
+			"columns": ["tenant_id"],
+			"schemaTo": "core",
+			"tableTo": "tenants",
+			"columnsTo": ["id"],
+			"onUpdate": "NO ACTION",
+			"onDelete": "CASCADE",
+			"name": "memberships_tenant_id_tenants_id_fkey",
+			"entityType": "fks",
+			"schema": "core",
+			"table": "memberships"
+		},
+		{
+			"nameExplicit": false,
+			"columns": ["user_id"],
+			"schemaTo": "core",
+			"tableTo": "users",
+			"columnsTo": ["id"],
+			"onUpdate": "NO ACTION",
+			"onDelete": "CASCADE",
+			"name": "memberships_user_id_users_id_fkey",
+			"entityType": "fks",
+			"schema": "core",
+			"table": "memberships"
+		},
+		{
+			"nameExplicit": false,
+			"columns": ["tenant_id"],
+			"schemaTo": "core",
+			"tableTo": "tenants",
+			"columnsTo": ["id"],
+			"onUpdate": "NO ACTION",
+			"onDelete": "CASCADE",
+			"name": "projects_tenant_id_tenants_id_fkey",
+			"entityType": "fks",
+			"schema": "core",
+			"table": "projects"
+		},
+		{
+			"nameExplicit": false,
+			"columns": ["tenant_id"],
+			"schemaTo": "core",
+			"tableTo": "tenants",
+			"columnsTo": ["id"],
+			"onUpdate": "NO ACTION",
+			"onDelete": "CASCADE",
+			"name": "tasks_tenant_id_tenants_id_fkey",
+			"entityType": "fks",
+			"schema": "core",
+			"table": "tasks"
+		},
+		{
+			"nameExplicit": true,
+			"columns": ["tenant_id", "project_id"],
+			"schemaTo": "core",
+			"tableTo": "projects",
+			"columnsTo": ["tenant_id", "id"],
+			"onUpdate": "NO ACTION",
+			"onDelete": "CASCADE",
+			"name": "tasks_tenant_id_project_id_fkey",
+			"entityType": "fks",
+			"schema": "core",
+			"table": "tasks"
+		},
+		{
+			"columns": ["tenant_id", "user_id"],
+			"nameExplicit": false,
+			"name": "memberships_pkey",
+			"entityType": "pks",
+			"schema": "core",
+			"table": "memberships"
+		},
+		{
+			"columns": ["id"],
+			"nameExplicit": false,
+			"name": "projects_pkey",
+			"schema": "core",
+			"table": "projects",
+			"entityType": "pks"
+		},
+		{
+			"columns": ["id"],
+			"nameExplicit": false,
+			"name": "tasks_pkey",
+			"schema": "core",
+			"table": "tasks",
+			"entityType": "pks"
+		},
+		{
+			"columns": ["id"],
+			"nameExplicit": false,
+			"name": "tenants_pkey",
+			"schema": "core",
+			"table": "tenants",
+			"entityType": "pks"
+		},
+		{
+			"columns": ["id"],
+			"nameExplicit": false,
+			"name": "users_pkey",
+			"schema": "core",
+			"table": "users",
+			"entityType": "pks"
+		},
+		{
+			"nameExplicit": true,
+			"columns": ["tenant_id", "slug"],
+			"nullsNotDistinct": false,
+			"name": "projects_tenant_id_slug_key",
+			"entityType": "uniques",
+			"schema": "core",
+			"table": "projects"
+		},
+		{
+			"nameExplicit": true,
+			"columns": ["tenant_id", "id"],
+			"nullsNotDistinct": false,
+			"name": "projects_tenant_id_id_key",
+			"entityType": "uniques",
+			"schema": "core",
+			"table": "projects"
+		},
+		{
+			"nameExplicit": false,
+			"columns": ["slug"],
+			"nullsNotDistinct": false,
+			"name": "tenants_slug_key",
+			"schema": "core",
+			"table": "tenants",
+			"entityType": "uniques"
+		},
+		{
+			"nameExplicit": false,
+			"columns": ["email"],
+			"nullsNotDistinct": false,
+			"name": "users_email_key",
+			"schema": "core",
+			"table": "users",
+			"entityType": "uniques"
+		},
+		{
+			"as": "PERMISSIVE",
+			"for": "ALL",
+			"roles": ["runner"],
+			"using": "\"core\".\"memberships\".\"tenant_id\" = current_setting('app.tenant_id', true)::uuid",
+			"withCheck": "\"core\".\"memberships\".\"tenant_id\" = current_setting('app.tenant_id', true)::uuid",
+			"name": "tenant_isolation",
+			"entityType": "policies",
+			"schema": "core",
+			"table": "memberships"
+		},
+		{
+			"as": "PERMISSIVE",
+			"for": "ALL",
+			"roles": ["runner"],
+			"using": "\"core\".\"projects\".\"tenant_id\" = current_setting('app.tenant_id', true)::uuid",
+			"withCheck": "\"core\".\"projects\".\"tenant_id\" = current_setting('app.tenant_id', true)::uuid",
+			"name": "tenant_isolation",
+			"entityType": "policies",
+			"schema": "core",
+			"table": "projects"
+		},
+		{
+			"as": "PERMISSIVE",
+			"for": "ALL",
+			"roles": ["runner"],
+			"using": "\"core\".\"tasks\".\"tenant_id\" = current_setting('app.tenant_id', true)::uuid",
+			"withCheck": "\"core\".\"tasks\".\"tenant_id\" = current_setting('app.tenant_id', true)::uuid",
+			"name": "tenant_isolation",
+			"entityType": "policies",
+			"schema": "core",
+			"table": "tasks"
+		},
+		{
+			"as": "PERMISSIVE",
+			"for": "ALL",
+			"roles": ["runner"],
+			"using": "\"core\".\"tenants\".\"id\" = current_setting('app.tenant_id', true)::uuid",
+			"withCheck": "\"core\".\"tenants\".\"id\" = current_setting('app.tenant_id', true)::uuid",
+			"name": "tenant_isolation",
+			"entityType": "policies",
+			"schema": "core",
+			"table": "tenants"
+		}
+	],
+	"renames": []
 }
