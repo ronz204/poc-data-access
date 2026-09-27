@@ -8,12 +8,17 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.5.14",
-		"@types/bun": "latest"
+		"@types/bun": "latest",
+		"drizzle-kit": "^1.0.0-rc.4"
 	},
 	"peerDependencies": {
 		"typescript": "^5"
 	},
 	"dependencies": {
-		"dockdi": "^1.0.2"
+		"dockdi": "^1.0.2",
+		"drizzle-orm": "^1.0.0-rc.4",
+		"drizzle-seed": "^1.0.0-rc.4",
+		"postgres": "^3.4.9",
+		"uuidv7": "^1.2.1"
 	}
 }

@@ -40,6 +40,8 @@
 			"@app/*": ["./source/app/*"],
 			"@core/*": ["./source/core/*"],
 			"@infra/*": ["./source/infra/*"],
+
+			"@dal/*": ["./drizzle/dal"],
 			"@db/*": ["./drizzle/database/*"]
 		}
 	}
