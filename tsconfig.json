@@ -41,7 +41,7 @@
 			"@core/*": ["./source/core/*"],
 			"@infra/*": ["./source/infra/*"],
 
-			"@dal/*": ["./drizzle/dal"],
+			"@dal/*": ["./drizzle/dal/*"],
 			"@db/*": ["./drizzle/database/*"]
 		}
 	}

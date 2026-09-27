@@ -4,7 +4,9 @@
 	"private": true,
 	"scripts": {
 		"format": "biome format --write .",
-		"lint:fix": "biome check --write ."
+		"lint:fix": "biome check --write .",
+		"drizz:seeding": "bun run cmd/seeder.boot.ts",
+		"drizz:migrate": "bunx --bun drizzle-kit migrate"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.5.14",
