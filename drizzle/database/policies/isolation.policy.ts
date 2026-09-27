@@ -5,7 +5,7 @@ import { pgPolicy } from "drizzle-orm/pg-core";
 
 export class IsolationPolicy {
 	static tenant(tenantId: AnyPgColumn) {
-		const predicate = sql`${tenantId} = current_setting('app.tenant_id', true)::uuid`;
+		const predicate = sql`${tenantId} = nullif(current_setting('app.tenant_id', true), '')::uuid`;
 
 		return pgPolicy("tenant_isolation", {
 			as: "permissive",
