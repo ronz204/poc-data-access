@@ -252,7 +252,7 @@ servicio y repositorio, pero no tiene ninguna transacción.
 
 Cada `run` abre **una oficina temporal** (`container.scope()`):
 
-- La oficina **hereda** todo lo que sabe la recepción (cómo construir `ProjectService`, etc.).
+- La oficina **hereda** todo lo que sabe la recepción (cómo construir `CreateProject`, etc.).
 - Pero tiene **cosas propias en su escritorio**: la `tx` de esa transacción, el tenant, el
   actor, el contexto y un `Transactor` anidado.
 - Cuando alguien en esa oficina pide algo, dockdi **busca primero en el escritorio de la
@@ -260,7 +260,7 @@ Cada `run` abre **una oficina temporal** (`container.scope()`):
 
 ```text
 container (recepción)
-│  sabe construir: TenantRepository, ProjectService, ...
+│  sabe construir: DrizzleProjectRepository, CreateProject, ...
 │  TransactorToken → Transactor principal
 │
 └─ scope del run  (oficina temporal)
@@ -298,7 +298,7 @@ Son dos capas de protección:
 | App (dockdi) | `MissingTokenError`: el repositorio ni siquiera se construye |
 | Base (RLS) | aunque accedas a la `tx` directo, ves `[]` y no puedes escribir |
 
-Con el actor pasa lo mismo: un servicio que pide `ActorToken` (como `ProfileService`, que opera
+Con el actor pasa lo mismo: un caso de uso que pide `ActorToken` (como `ChangePassword`, que opera
 sobre "mi cuenta") no se construye si nadie se identificó.
 
 ¿Y por qué existe `ContextToken` si ya están `TenantToken` y `ActorToken`? Porque hay piezas que
@@ -373,20 +373,17 @@ el contexto equivocado, y la auditoría quedaría atribuida a la persona incorre
 
 ### 6.4 ¿Por qué `run` registra un `Transactor` nuevo en el scope?
 
-Para que el servicio reciba el anidado **sin enterarse**. Mira `ProjectService`:
+Para que el caso de uso reciba el anidado **sin enterarse**. Mira `CreateAvailableProjects`
+(`source/app/projects/create-available-projects.usecase.ts`):
 
 ```ts
-class ProjectService {
-	constructor(
-		private readonly projects: ProjectRepository,
-		private readonly chronicler: Chronicler,
-		private readonly transactor: Transactor, // ← inyectado con TransactorToken
-	) {}
+export class CreateAvailableProjects {
+	constructor(private readonly transactor: Transactor) {} // ← inyectado con TransactorToken
 }
 ```
 
-- Si `ProjectService` se resuelve **dentro de un `run`**, dockdi le da el `Transactor` anidado de
-  la oficina → sus `run` son savepoints.
+- Si `CreateAvailableProjects` se resuelve **dentro de un `run`**, dockdi le da el `Transactor`
+  anidado de la oficina → sus `run` son savepoints.
 - Si no existiera ese registro, dockdi le daría el **principal** de la recepción, y su `run`
   abriría **otra transacción en otra conexión**:
 
@@ -405,17 +402,19 @@ Eso rompe tres cosas:
 Este mecanismo es lo que reemplaza a `AsyncLocalStorage`: **el contexto de la transacción viaja
 en el scope de DI**, no en una variable global.
 
-### 6.5 Ejemplo real (`ProjectService.createAvailable`)
+### 6.5 Ejemplo real (`CreateAvailableProjects`)
 
 ```ts
-async createAvailable(slugs: string[]): Promise<string[]> {
+async execute(slugs: readonly string[]): Promise<string[]> {
 	const created: string[] = [];
 	for (const slug of slugs) {
 		try {
-			await this.transactor.run(ProjectServiceToken, (service) => service.create(slug, slug));
+			await this.transactor.run(CreateProjectToken, (create) =>
+				create.execute({ name: slug, slug }),
+			);
 			created.push(slug);
 		} catch (error) {
-			if (!(error instanceof SlugTakenError)) throw error;
+			if (!(error instanceof ProjectSlugTakenError)) throw error;
 		}
 	}
 	return created;
@@ -425,9 +424,10 @@ async createAvailable(slugs: string[]): Promise<string[]> {
 Con `["api", "web", "docs"]` y `web` ya existente, devuelve `["api", "docs"]` y la transacción
 externa hace `COMMIT` sin problemas.
 
-Fíjate que el `run` anidado resuelve **el mismo `ProjectService`** otra vez, pero dentro de la
-oficina del savepoint: su `ProjectRepository` y su `Chronicler` reciben la `tx` del savepoint.
-Por eso, cuando `web` falla, se deshacen juntos el proyecto y su registro de auditoría.
+Fíjate que el `run` anidado resuelve **otro caso de uso** (`CreateProject`) dentro de la oficina
+del savepoint: su repositorio y su `Chronicler` reciben la `tx` del savepoint. Por eso, cuando
+`web` falla, se deshacen juntos el proyecto y su registro de auditoría. Los casos de uso se
+componen sin saber nada de transacciones.
 
 ---
 
@@ -491,18 +491,20 @@ export const ProjectConstraints = {
 } as const;
 ```
 
-Y el repositorio dice "si falla este constraint, lanza este error":
+Y el repositorio (`source/infra/projects/drizzle-project.repository.ts`) dice "si falla este
+constraint, lanza este error **de dominio**":
 
 ```ts
-async create(project: Omit<typeof projects.$inferInsert, "tenantId">): Promise<void> {
-	await ViolationTranslator.translate(
-		this.tx.insert(projects).values({ ...project, tenantId: this.tenantId }),
-		{ [ProjectConstraints.slug]: () => new SlugTakenError(project.slug) },
-	);
+async add(project: Project): Promise<void> {
+	const row = ProjectMapper.toRow(project.snapshot(), this.tenantId);
+	await ViolationTranslator.translate(this.tx.insert(projects).values(row), {
+		[ProjectConstraints.slug]: () => new ProjectSlugTakenError(row.slug),
+	});
 }
 ```
 
-- Si falla por `projects_tenant_id_slug_key` → `SlugTakenError`.
+- Si falla por `projects_tenant_id_slug_key` → `ProjectSlugTakenError`, que vive en
+  `@core/projects/project.errors`. Quien llama nunca ve un error de Postgres.
 - Si falla por otra cosa → `PersistenceError` (o el error original si no se reconoce).
 
 Usar las constantes en lugar de strings sueltos hace que un error de tipeo lo detecte el
@@ -513,153 +515,168 @@ compilador.
 
 ---
 
-## 8. Recorrido por `cmd/sample.boot.ts`
+## 8. Recorrido por el código
 
-### 8.1 Repositorios: sólo SQL
+El diseño completo (por qué separar escritura de lectura, tipos base, reglas de dependencia) está
+en `safety.md`. Aquí va el mapa para orientarse.
 
-Los repositorios de tablas con tenant reciben dos cosas: la `tx` y el `tenantId`. Nunca le
-piden el tenant a quien los llama; lo toman del scope.
+### 8.1 Las capas
 
-```ts
-class ProjectRepository {
-	constructor(
-		private readonly tx: Executor,
-		private readonly tenantId: string,
-	) {}
-
-	async create(project: Omit<typeof projects.$inferInsert, "tenantId" | "id">): Promise<string> {
-		const id = generateId();
-		await ViolationTranslator.translate(
-			this.tx.insert(projects).values({ ...project, id, tenantId: this.tenantId }),
-			{ [ProjectConstraints.slug]: () => new SlugTakenError(project.slug) },
-		);
-		return id;
-	}
-
-	list() {
-		return this.tx.select({ slug: projects.slug, name: projects.name }).from(projects);
-	}
-}
+```text
+source/
+├── core/     dominio: entidades, ids, errores y contratos de repositorio. Sin drizzle ni dockdi
+├── app/      casos de uso, contratos de lectura (vistas, filtros, queries) y tokens
+├── infra/    implementaciones con drizzle: mappers, repositorios, criteria y queries
+├── dock.ts   módulos de dockdi: une cada contrato con su implementación
+└── env.ts
+drizzle/      DAL (Transactor, Chronicler, errores), modelos, policies y migraciones
+cmd/          puntos de entrada (sample.boot.ts)
 ```
 
-- `Omit<..., "tenantId" | "id">` hace que el compilador **no te deje** pasar un `tenantId` a mano.
-- El `id` se genera en la app y se devuelve: el servicio lo necesita para auditar.
-- `list()` **no filtra por tenant**. RLS lo hace.
-- `UserRepository` sólo recibe la `tx`: `users` es global y no tiene tenant.
+| Capa | Puede importar |
+| --- | --- |
+| `@core` | sólo sí misma (y `uuidv7`) |
+| `@app` | `@core`, `@dal`, `dockdi` (para los tokens) |
+| `@infra` | `@core`, `@app`, `@dal`, `@db`, drizzle |
+| `@dock`, `cmd/` | todo |
 
-### 8.2 Servicios: sólo lógica
+### 8.2 Escritura: entidad → repositorio → mapper
+
+Un caso de uso trabaja con **entidades de dominio**, nunca con filas:
 
 ```ts
-class OnboardingService {
+export class CreateProject {
 	constructor(
-		private readonly tenants: TenantRepository,
-		private readonly users: UserRepository,
-		private readonly memberships: MembershipRepository,
+		private readonly projects: ProjectRepository,
 		private readonly chronicler: Chronicler,
 	) {}
 
-	async onboard(userId: string, name: string, slug: string, ownerEmail: string): Promise<void> {
-		const tenantId = await this.tenants.create({ name, slug });
-		await this.chronicler.record({
-			action: "tenant.created",
-			entity: "tenants",
-			entityId: tenantId,
-			changes: Chronicler.created({ name, slug }),
-		});
-
-		await this.users.create({ id: userId, email: ownerEmail, name, passwordHash: "sample" });
-		await this.chronicler.record({ action: "user.created", entity: "users", entityId: userId, ... });
-
-		await this.memberships.create({ userId, role: "owner" });
-		await this.chronicler.record({ action: "membership.created", entity: "memberships", ... });
+	async execute(input: CreateProjectInput): Promise<ProjectId> {
+		const project = Project.create(input.name, input.slug);
+		await this.projects.add(project);
+		await this.chronicler.record({ action: "project.created", ... });
+		return project.id;
 	}
 }
 ```
 
-Los servicios **no mencionan el tenant ni el actor en ningún lado**: dicen *qué* pasó, y el
-`Chronicler` completa *dónde* y *quién* desde el contexto. Todos los inserts, incluidos los de
-auditoría, van en la misma transacción porque todos recibieron la misma `tx` de la misma
-oficina: si falla el último, se deshace todo.
+- `Project` (`@core`) valida sus reglas (el nombre no puede estar vacío) y genera su id.
+- `ProjectRepository` es una **interfaz** de `@core` con sólo `find`, `add` y `update`.
+- `DrizzleProjectRepository` (`@infra`) la implementa: usa `ProjectMapper` para convertir el
+  `snapshot()` en fila (`toRow`) y la fila en entidad (`toDomain` → `reconstitute`).
+- El tenant lo pone el repositorio desde `TenantToken`: la entidad no sabe que existe.
 
-### 8.3 El cableado (una sola vez, al arrancar)
+### 8.3 Lectura: query → criteria → vista
+
+Una lectura no pasa por el dominio. `DrizzleListProjects` (`@infra/projects/queries/`) devuelve
+directamente una vista tipada:
 
 ```ts
-const container = new Container();
-const transactor = Transactor.create(container, postgres(env.POSTGRES_RUNNER_URL));
+async execute({ filter, sorting, paging }: ListProjectsParams): Promise<Page<ProjectSummary>> {
+	const column = ProjectCriteria.sortable[sorting.field];
 
-container.bind(TransactorToken).toValue(transactor);
-container.bind(ChroniclerToken).toClass(Chronicler, [TxToken, ContextToken]);
-container.bind(UserRepositoryToken).toClass(UserRepository, [TxToken]);
-container.bind(ProjectRepositoryToken).toClass(ProjectRepository, [TxToken, TenantToken]);
-container
-	.bind(ProjectServiceToken)
-	.toClass(ProjectService, [ProjectRepositoryToken, ChroniclerToken, TransactorToken]);
-container
-	.bind(ProfileServiceToken)
-	.toClass(ProfileService, [UserRepositoryToken, ChroniclerToken, ActorToken]);
+	const rows = await this.tx
+		.select({ id: projects.id, name: projects.name, ..., taskCount: count(tasks.id) })
+		.from(projects)
+		.leftJoin(tasks, eq(tasks.projectId, projects.id))
+		.where(and(ProjectCriteria.where(filter), Paginator.after(projects, projects.id, column, sorting.direction, paging)))
+		.groupBy(projects.id)
+		.orderBy(...Paginator.order(projects.id, column, sorting.direction))
+		.limit(paging.limit + 1);
+
+	return Paginator.page(rows as ProjectSummary[], paging.limit);
+}
 ```
 
-Aquí no existe ninguna `tx`, tenant ni actor todavía. Esos tokens sólo se llenan dentro de cada
-`run`.
+- `ProjectCriteria.where` traduce el `ProjectFilter` tipado a condiciones de drizzle.
+- `ProjectCriteria.sortable` sólo mapea los campos de `ProjectSortField`: no se puede ordenar por
+  otra cosa.
+- `Paginator` implementa el **cursor**: el cursor es el `id` de la última fila, y la condición
+  compara el par `(columna de orden, id)` contra el de esa fila. Así funciona con cualquier
+  orden, no sólo por fecha.
+- Se piden `limit + 1` filas: si llega la extra, hay página siguiente.
 
-### 8.4 Un `Transactor` por contexto
+### 8.4 El cableado: `source/dock.ts`
 
 ```ts
-const acmeId = generateId();
-const acmeOwner = generateId();
+export class Dock {
+	static readonly projects: Module = (container) => {
+		container.bind(ProjectRepositoryToken).toClass(DrizzleProjectRepository, [TxToken, TenantToken]);
+		container.bind(ListProjectsToken).toClass(DrizzleListProjects, [TxToken]);
+		container.bind(CreateProjectToken).toClass(CreateProject, [ProjectRepositoryToken, ChroniclerToken]);
+		...
+	};
+
+	static create(client: postgres.Sql): Transactor {
+		const container = new Container();
+		const transactor = Transactor.create(container, client);
+		container.bind(TransactorToken).toValue(transactor);
+		container.load(Dock.dal, Dock.tenants, Dock.users, Dock.memberships, Dock.projects, Dock.auditrail);
+		return transactor;
+	}
+}
+```
+
+Un `Module` por área. Es el **único lugar** donde un contrato (`ProjectRepository`) se une con su
+implementación (`DrizzleProjectRepository`).
+
+### 8.5 El uso: `cmd/sample.boot.ts`
+
+```ts
+const transactor = Dock.create(postgres(env.POSTGRES_RUNNER_URL));
 
 const acme = transactor.forTenant(acmeId).forActor(acmeOwner);
 const acmeJob = transactor.forTenant(acmeId);
 const me = transactor.forActor(acmeOwner);
 
-await acme.run(OnboardingServiceToken, (onboarding) =>
-	onboarding.onboard(acmeOwner, "Acme", "acme", "owner@acme.dev"),
-);
-await acme.run(ProjectServiceToken, (service) => service.create("Web", "web"));
-await acmeJob.run(ProjectServiceToken, (service) => service.create("Nightly", "nightly"));
-await me.run(ProfileServiceToken, (profile) => profile.changePassword("rotated"));
+await acme.run(OnboardTenantToken, (onboard) => onboard.execute({ name: "Acme", ... }));
+const webId = await acme.run(CreateProjectToken, (create) => create.execute({ name: "Web", slug: "web" }));
+await acme.run(RenameProjectToken, (rename) => rename.execute(webId, "Website"));
+await acmeJob.run(CreateProjectToken, (create) => create.execute({ name: "Nightly", slug: "nightly" }));
+await me.run(ChangePasswordToken, (change) => change.execute("rotated"));
 ```
 
-El contexto aparece **una sola vez**, al crear `acme`, `acmeJob` o `me`. A partir de ahí, cada
-uno es "la base de datos vista por ese contexto".
+El ejemplo ya no define ninguna clase: sólo arma contextos y llama casos de uso y queries.
 
-¿Por qué los ids del tenant y del dueño se generan **antes** de crearlos? Porque la policy de
-`tenants` exige `id = app.tenant_id`: para insertar el tenant ya tienes que estar "dentro" de él.
-Y así el usuario que se registra queda como actor de su propio registro.
+¿Por qué los ids del tenant y del dueño se generan **antes** (`Identity.next<TenantId>()`)?
+Porque la policy de `tenants` exige `id = app.tenant_id`: para insertar el tenant ya tienes que
+estar "dentro" de él. Y así el usuario que se registra queda como actor de su propio registro.
 
-### 8.5 Lo que imprime
+### 8.6 Lo que imprime
 
 ```text
-duplicate slug     : slug "web" is already taken   ← ViolationTranslator
-savepoints         : [ "api", "docs" ]             ← run anidado, "web" se saltó
-cross-tenant (raw) : forbidden 42501               ← WITH CHECK de RLS
-acme sees          : [ "web", "api", "docs" ]      ← USING de RLS
-globex sees        : [ "web" ]
-no tenant (raw)    : []                            ← RLS: cerrado por defecto
-no tenant (service): MissingTokenError             ← dockdi: sin tenant no hay repositorio
-no actor (profile) : MissingTokenError             ← dockdi: sin actor no hay "mi cuenta"
-acme auditrail     :
+duplicate slug      : project slug "web" is already taken   ← ViolationTranslator → error de dominio
+savepoints          : [ "api", "docs" ]                     ← run anidado, "web" se saltó
+domain rule         : project name "   " is invalid         ← regla de la entidad Project
+cross-tenant (raw)  : forbidden 42501                       ← WITH CHECK de RLS
+page 1 (createdAt)  : [ "web", "api" ] next: yes            ← cursor
+page 2 (createdAt)  : [ "docs", "nightly" ] next: no
+sorted by name      : [ "Nightly", "Website", "api", "docs" ]
+by name, page 2     : [ "api", "docs" ]                     ← cursor con orden por nombre
+search 'web'        : [ "Website" ]                         ← ProjectCriteria (ilike)
+globex sees         : [ "web" ]                             ← USING de RLS
+no tenant (raw)     : []                                    ← RLS: cerrado por defecto
+no tenant (create)  : MissingTokenError                     ← dockdi: sin tenant no hay repositorio
+no actor (password) : MissingTokenError                     ← dockdi: sin actor no hay "mi cuenta"
+acme auditrail      :
   owner   tenant.created       {"name":[null,"Acme"],"slug":[null,"acme-…"]}
-  owner   user.created         {"name":[null,"Acme"],"email":[null,"owner@acme-….dev"]}
+  owner   user.created         {"name":[null,"Acme Owner"],"email":[null,"owner@acme-….dev"]}
   owner   membership.created   {"role":[null,"owner"],"userId":[null,"…"]}
   owner   project.created      {"name":[null,"Web"],"slug":[null,"web"]}
   owner   project.created      {"name":[null,"api"],"slug":[null,"api"]}
   owner   project.created      {"name":[null,"docs"],"slug":[null,"docs"]}
   owner   project.renamed      {"name":["Web","Website"]}
   system  project.created      {"name":[null,"Nightly"],"slug":[null,"nightly"]}
-identity auditrail : 0 rows visible to runner
+identity auditrail  : 0 rows visible to runner
 ```
 
-La sección 9 explica las líneas de auditoría.
+El caso `cross-tenant (raw)` usa `TxToken` directamente como `entry` para saltarse los casos de
+uso y escribir un `tenant_id` ajeno a propósito: aun así, RLS lo frena. El intento de renombrar
+con `"   "` no deja auditoría: la regla de la entidad falla antes de tocar la base.
 
-El caso `cross-tenant (raw)` usa `TxToken` directamente como `entry` para saltarse los
-repositorios y escribir un `tenant_id` ajeno a propósito: aun así, RLS lo frena.
-
-```ts
-await acme.run(TxToken, (tx) =>
-	tx.insert(projects).values({ tenantId: otherTenantId, name: "Intruder", slug: "intruder" }),
-);
-```
+> `sorted by name` pone las mayúsculas primero. La base usa `en_US.utf8`, pero en la imagen
+> `postgres:17-alpine` (musl) esa collation ordena por bytes. Si se quiere un orden "humano", se
+> ordena por `lower(name)` o se usa una collation ICU.
 
 ---
 
@@ -724,39 +741,51 @@ class Chronicler {
 - **`diff`** compara la fila anterior con los campos nuevos y guarda sólo lo que cambió.
   **`created`** arma los `changes` de algo nuevo (`[null, valor]` por campo).
 
-### 9.4 Un cambio con `diff`
+### 9.4 Un cambio con `diff` sobre snapshots
+
+`RenameProject` (`source/app/projects/rename-project.usecase.ts`):
 
 ```ts
-async rename(id: string, name: string): Promise<void> {
-	const before = await this.projects.find(id);
-	await this.projects.rename(id, name);
+async execute(id: ProjectId, name: string): Promise<void> {
+	const project = await this.projects.find(id);
+	const before = project.snapshot();
+
+	project.rename(name);
+	await this.projects.update(project);
+
 	await this.chronicler.record({
 		action: "project.renamed",
 		entity: "projects",
 		entityId: id,
-		changes: Chronicler.diff(before, { name }),
+		changes: Chronicler.diff(before, project.snapshot()),
 	});
 }
 ```
 
-Resultado: `{"name": ["Web", "Website"]}`. Sólo el campo que cambió.
+Resultado: `{"name": ["Web", "Website"]}`. Se compara el snapshot de antes con el de después,
+así que la auditoría guarda exactamente lo que la regla de dominio cambió, sin decir a mano qué
+campos mirar.
 
 ### 9.5 Identidad: sin tenant, sin valores secretos
 
+`ChangePassword` (`source/app/users/change-password.usecase.ts`):
+
 ```ts
-class ProfileService {
+export class ChangePassword {
 	constructor(
 		private readonly users: UserRepository,
 		private readonly chronicler: Chronicler,
 		private readonly actorId: string,
 	) {}
 
-	async changePassword(passwordHash: string): Promise<void> {
-		await this.users.updatePassword(this.actorId, passwordHash);
+	async execute(passwordHash: string): Promise<void> {
+		const user = await this.users.find(this.actorId as UserId);
+		user.changePassword(passwordHash);
+		await this.users.update(user);
 		await this.chronicler.record({
 			action: "user.password_changed",
 			entity: "users",
-			entityId: this.actorId,
+			entityId: user.id,
 		});
 	}
 }
@@ -783,37 +812,67 @@ class ProfileService {
 ### Leer datos de un tenant
 
 ```ts
-const rows = await transactor.forTenant(tenantId).forActor(userId).run(ProjectServiceToken, (s) => s.list());
+const page = await transactor
+	.forTenant(tenantId)
+	.forActor(userId)
+	.run(ListProjectsToken, (list) =>
+		list.execute({
+			filter: { search: "web" },
+			sorting: { field: "createdAt", direction: "desc" },
+			paging: { limit: 20 },
+		}),
+	);
 ```
 
-### Un repositorio nuevo
+Para la página siguiente, el mismo llamado con `paging: { limit: 20, after: page.next }`.
 
-- Tabla **con** `tenant_id`: inyecta `[TxToken, TenantToken]` y usa `Omit<..., "tenantId">` en
-  los inputs.
-- Tabla **global** (como `users`): inyecta sólo `[TxToken]`.
+### Una lectura nueva
+
+**No toques el repositorio.** Crea una query nueva:
+
+1. En `@app/<módulo>`: la vista (`*.views.ts`), los parámetros y la interfaz (`*.queries.ts`),
+   y su token (`*.tokens.ts`).
+2. En `@infra/<módulo>/queries/`: la clase `Drizzle...` que implementa la interfaz. Reutiliza
+   `<Módulo>Criteria` para los filtros y `Paginator` para el cursor.
+3. En `source/dock.ts`: `bind(Token).toClass(DrizzleQuery, [TxToken])`.
+
+### Un agregado nuevo
+
+1. `@core/<módulo>`: ids, entidad (`create`, `reconstitute`, reglas, `snapshot`), errores y la
+   interfaz del repositorio.
+2. `@infra/<módulo>`: el mapper y `Drizzle<Módulo>Repository`.
+   - Tabla **con** `tenant_id`: inyecta `[TxToken, TenantToken]`; el mapper recibe el `tenantId`.
+   - Tabla **global** (como `users`): inyecta sólo `[TxToken]`.
+3. `@app/<módulo>`: los casos de uso y sus tokens.
+4. `source/dock.ts`: un `Module` nuevo, agregado a `Dock.create`.
 
 ### Auditar una operación
 
-Inyecta `ChroniclerToken` en el servicio y llama `record` **después** del cambio, en el mismo
-método. Usa `Chronicler.created(...)` para algo nuevo y `Chronicler.diff(before, after)` para un
-cambio. Nunca pongas valores secretos en `changes`.
+Inyecta `ChroniclerToken` en el caso de uso y llama `record` **después** del cambio. Usa
+`Chronicler.created(...)` para algo nuevo y `Chronicler.diff(before.snapshot, after.snapshot)`
+para un cambio. Nunca pongas valores secretos en `changes`.
 
 ### Varias escrituras atómicas
 
-Ponlas en el mismo servicio y llámalo en un solo `run`. Todo lo que ocurra dentro del callback
-comparte la transacción.
+Ponlas en el mismo caso de uso y llámalo en un solo `run`. Todo lo que ocurra dentro del
+callback comparte la transacción.
 
 ### Tolerar un fallo y seguir
 
-Inyecta `TransactorToken` en el servicio y envuelve la operación arriesgada en `this.transactor.run(...)`.
+Inyecta `TransactorToken` en el caso de uso y envuelve la operación arriesgada en
+`this.transactor.run(OtroCasoDeUsoToken, ...)`.
 
 ### Traducir errores en la capa HTTP
 
 ```ts
 try {
-	await transactor.forTenant(tenantId).forActor(userId).run(ProjectServiceToken, (s) => s.create(name, slug));
+	await transactor
+		.forTenant(tenantId)
+		.forActor(userId)
+		.run(CreateProjectToken, (create) => create.execute({ name, slug }));
 } catch (error) {
-	if (error instanceof SlugTakenError) return conflict(error.message);
+	if (error instanceof ProjectSlugTakenError) return conflict(error.message);
+	if (error instanceof InvalidProjectNameError) return badRequest(error.message);
 	if (error instanceof PersistenceError && error.kind === "forbidden") return forbidden();
 	if (error instanceof PersistenceError && error.retryable) return serviceUnavailable();
 	throw error;
