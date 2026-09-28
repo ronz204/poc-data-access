@@ -6,28 +6,37 @@ import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import type postgres from "postgres";
 
+export interface TransactorContext {
+	readonly tenantId: string | null;
+	readonly actorId: string | null;
+}
+
 export const TxToken = token<Executor>("Tx");
 export const TenantToken = token<string>("Tenant");
+export const ActorToken = token<string>("Actor");
+export const ContextToken = token<TransactorContext>("Context");
 export const TransactorToken = token<Transactor>("Transactor");
 
 export class Transactor {
 	private constructor(
 		private readonly container: Container,
 		private readonly executor: Executor,
-		private readonly tenantId: string | null,
+		private readonly context: TransactorContext,
 		private readonly nested: boolean,
 		private readonly client: postgres.Sql | null,
 	) {}
 
 	static create(container: Container, client: postgres.Sql): Transactor {
-		return new Transactor(container, drizzle({ client }), null, false, client);
+		const context = { tenantId: null, actorId: null };
+		return new Transactor(container, drizzle({ client }), context, false, client);
 	}
 
 	forTenant(tenantId: string): Transactor {
-		if (this.nested && tenantId !== this.tenantId) {
-			throw new TransactionScopeError("a nested run cannot switch tenant");
-		}
-		return new Transactor(this.container, this.executor, tenantId, this.nested, null);
+		return this.with({ tenantId });
+	}
+
+	forActor(actorId: string): Transactor {
+		return this.with({ actorId });
 	}
 
 	async run<S, R>(entry: Token<S>, work: (service: S) => Promise<R>): Promise<R> {
@@ -35,13 +44,18 @@ export class Transactor {
 			return await this.executor.transaction(async (tx) => {
 				const scope = this.container.scope();
 
-				if (this.tenantId && !this.nested) {
-					await tx.execute(sql`select set_config('app.tenant_id', ${this.tenantId}, true)`);
-					scope.bind(TenantToken).toValue(this.tenantId);
+				if (!this.nested) {
+					const { tenantId, actorId } = this.context;
+					if (tenantId) {
+						await tx.execute(sql`select set_config('app.tenant_id', ${tenantId}, true)`);
+						scope.bind(TenantToken).toValue(tenantId);
+					}
+					if (actorId) scope.bind(ActorToken).toValue(actorId);
+					scope.bind(ContextToken).toValue(this.context);
 				}
 
 				scope.bind(TxToken).toValue(tx);
-				scope.bind(TransactorToken).toValue(new Transactor(scope, tx, this.tenantId, true, null));
+				scope.bind(TransactorToken).toValue(new Transactor(scope, tx, this.context, true, null));
 				return work(scope.resolve(entry));
 			});
 		} catch (error) {
@@ -51,5 +65,15 @@ export class Transactor {
 
 	async close(): Promise<void> {
 		await this.client?.end();
+	}
+
+	private with(patch: Partial<TransactorContext>): Transactor {
+		const context = { ...this.context, ...patch };
+		const switched =
+			context.tenantId !== this.context.tenantId || context.actorId !== this.context.actorId;
+		if (this.nested && switched) {
+			throw new TransactionScopeError("a nested run cannot switch context");
+		}
+		return new Transactor(this.container, this.executor, context, this.nested, null);
 	}
 }
