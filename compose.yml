@@ -1,2 +1,12 @@
+name: pattern
+
 include:
   - docker/data/compose.yml
+
+networks:
+  pattern-network:
+    name: pattern-network
+
+volumes:
+  pattern-postgres-data:
+    name: pattern-postgres-data

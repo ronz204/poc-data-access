@@ -1,11 +1,6 @@
 SELECT format('CREATE ROLE %I', role)
 FROM (VALUES ('sampler'), ('runner'), ('relayer')) AS roles (role)
-WHERE NOT EXISTS (
-  SELECT 1
-  FROM pg_roles
-  WHERE rolname = roles.role
-)
-\gexec
+WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = roles.role)\gexec
 
 ALTER ROLE sampler
   WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS

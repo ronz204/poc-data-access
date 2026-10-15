@@ -21,11 +21,3 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-networks:
-  pattern-network:
-    name: pattern-network
-
-volumes:
-  pattern-postgres-data:
-    name: pattern-postgres-data
