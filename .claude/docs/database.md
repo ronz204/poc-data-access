@@ -1,54 +1,69 @@
-<!--
-This file ships as part of the harness itself, as the fill-in skeleton for
-this doc category — copy it into a project as-is, then fill it in place
-when bootstrapping (surveyor) or updating (archivist) that project's
-persistence reference. Unlike structure.md, this file is always
-created for a bootstrapped project, even when the honest content is "not
-applicable here" (no persistent store) — state that explicitly rather than
-omitting the file, same discipline surveyor's own baseline checklist uses
-for security/performance/scalability. Data model and database
-infrastructure are kept together here, deliberately, rather than split
-against structure.md. Delete these guidance comments
-once every section holds real, grounded content. Ground every claim in the
-real schema/migrations/provisioning config (Step 0), never from memory or
-from what a similar stack usually looks like. Omit any section below that
-genuinely doesn't apply to this project's store (e.g. Access control's
-row-level policies on a store with no such feature) rather than forcing
-content into it.
--->
-
 # Database
 
-<!-- One sentence: what this file covers. If genuinely not applicable (no persistent store), say so plainly here and skip the remaining sections rather than forcing content into them. -->
+The PostgreSQL design for the project: schemas, roles, data model, invariants and access conventions. The schema is the target design; no migration has been applied yet.
 
 ---
 
 ## Schema
 
-<!-- How objects are namespaced/organized at the store level, and why — a dedicated schema/namespace vs. the engine's default, a naming convention for collections. Omit if the store has no such concept. -->
+Postgres schemas are split by bounded context, not by table type, so the namespaces mirror the code modules and the read/write split.
+
+| Schema | Tables | Notes |
+|---|---|---|
+| `platform` | `tenants`, `users`, `memberships` | Identity and tenancy. `tenants` is the root and carries no row-level policy. |
+| `catalog` | `products`, `categories` | `products` has soft delete, stock and a version column. Owner of stock. |
+| `sales` | `customers`, `orders`, `items` | `customers` has soft delete. `items` snapshots product name and price. |
+| `wallet` | `accounts`, `entries` | `entries` is an immutable ledger. |
+| `messaging` | `events`, `idempotency` | `events` is the outbox. `idempotency` stores key, request hash and response. |
+| `audit` | `trailer` | Append-only for the application; candidate for monthly partitioning. |
+| `reporting` | views, materialized views | Read-only projections for the query side. |
+
+All objects are referenced with their schema. The migration journal lives in its own schema, away from the domain.
 
 ## Access control
 
-<!-- Who/what can touch this store and how narrowly — roles or credentials split by purpose (migration vs. runtime, read vs. write), and any row-level or per-tenant isolation policy enforced by the store itself rather than trusted to application code. A table (Role | Purpose | Used by) is usually the clearest shape for the role split. State *why* the split exists (what it prevents), not just that it does. -->
+| Role | Purpose | Used by |
+|---|---|---|
+| `migrator` | Owns every object; bypasses row-level security. | Migration tooling only |
+| `app_rw` | Reads and writes catalog, sales, wallet and messaging; insert-only on `audit.trailer`; insert and select only on `wallet.entries`. Subject to row-level security. | Application writes |
+| `app_reader` | Select on `reporting` only. Subject to row-level security. | Read queries |
+
+The split prevents the application from altering schema, rewriting history (audit, ledger) or escaping tenant isolation. A table owner skips row-level security unless the table forces it, so the application never connects as the owner, and tables use `FORCE ROW LEVEL SECURITY`; a test must verify the isolation actually holds.
+
+Tenant isolation: every transaction sets `app.tenant_id` locally, and each tenant-scoped table has a policy comparing its `tenant_id` to `current_setting('app.tenant_id')`. A reusable function enables the policy for a given schema and table and is called from hand-written migrations.
 
 ## Data model
 
-<!-- The entities/tables/collections that matter, their relationships, and the value types (enums, domain-specific types) that constrain them. A fenced code block (schema DDL, or a structured outline) beats prose whenever the shape is structural. Entity/field names are durable architecture vocabulary — describe the shape, never the source-tree location that defines it. -->
+Columns, types, keys and foreign keys are modeled in `drizzle/DIAGRAM.md`; this doc holds only which tables belong to which schema and the rules that cut across them.
+
+- Ids are UUID v7 generated in the application layer, never by a Postgres default, so the id is known before the insert and ordering follows creation time.
+- Money is stored as integer minor units (`bigint`) in a single fixed currency; stock is an `integer` with a check against negative values.
 
 ## Persistence invariants
 
-<!-- What must always hold about the data regardless of which code path writes it — uniqueness, referential integrity, a cross-entity consistency guarantee, an invariant a migration must never violate. Name and explain any non-obvious enforcement pattern relied on to hold one of these (e.g. a composite key trick), not just the invariant itself. This is usually the highest-value section: it's what actually gets checked against a future schema change. -->
+- Every tenant-scoped row carries `tenant_id` and is covered by a row-level policy.
+- Foreign keys across schemas exist only toward `platform.tenants` and from `sales.items` to `catalog.products`. Wallet, messaging and audit refer to their origin by type and id with no foreign key, keeping them decoupled.
+- Stock never goes negative, whichever concurrency strategy is used.
+- Wallet entries and audit entries are never updated or deleted.
+- An outbox event is committed if and only if the change that produced it committed.
+- One idempotency key maps to at most one stored outcome per tenant (unique constraint).
+- Uniqueness on soft-deletable tables applies only to live rows (partial unique index on `deleted_at IS NULL`), so a deleted value can be reused.
+- Order items keep the name and price seen at purchase time, independent of later product changes.
 
 ## Infrastructure
 
-<!-- Engine, hosting model, backup/replication approach — static facts set up once and rarely revisited. Named infrastructure roles are durable architecture vocabulary and safe to name; a specific connection string, credential, or file path is not. -->
+Single PostgreSQL instance in a local container. Bootstrap scripts run in two stages: cluster-level roles first, then per-store creation of the database, schemas, grants and default privileges. Credentials come from an uncommitted environment file. No replication or backup.
 
 ## Access patterns
 
-<!-- How the application actually talks to this store — the convention for reads/writes, migrations, and any pattern meant to avoid a known failure mode (e.g. unbounded fetches, N+1 queries). Explain why the convention exists, not just what it is. -->
+- All writes run inside the Transactor's transaction on the application role.
+- Reads that return lists use keyset pagination ordered by `(created_at, id)`; the tiebreaker keeps pages stable. OFFSET is only used in comparison experiments.
+- Soft-deleted rows are excluded by default in repositories and queries.
+- Schema changes are drizzle-kit migrations plus hand-written SQL for what it does not generate: roles, grants, row-level policies, triggers and partial indexes. Breaking changes follow expand then contract.
+- Outbox polling claims rows with `FOR UPDATE SKIP LOCKED`.
 
 ---
 
 ## Non-goals
 
-<!-- Only include this section if a scope boundary here is easy to violate by accident. Omit entirely otherwise. -->
+- No backup, replication or high availability.

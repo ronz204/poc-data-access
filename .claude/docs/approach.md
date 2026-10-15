@@ -1,57 +1,69 @@
-<!--
-This file ships as part of the harness itself, as the fill-in skeleton for
-this doc category — copy it into a project as-is, then fill it in place
-when bootstrapping (surveyor) or updating (archivist) that project's build
-approach. Unlike structure.md, this file is always created for a
-bootstrapped project, even when the honest content is "not applicable here"
-(no meaningful build sequencing beyond "just build the thing") — state that
-explicitly rather than omitting the file. This file is never discarded once
-work lands — it stays live-edited the same way every other doc does: update
-the roadmap and status in place as phases complete, don't leave a finished
-phase's entry describing it as pending.
-Delete these guidance comments once every section holds real, grounded
-content. Ground every claim in what was actually decided/confirmed, never
-invent a phase or pillar that hasn't actually been agreed on.
--->
-
 # Approach
 
-<!-- One sentence: what this file covers — the order and philosophy behind building this project — and what it deliberately excludes (e.g. "Why the project exists lives in overview.md, not here"). -->
+The order and reasoning behind building the project. Why the project exists is in the overview, not here.
 
 ---
 
 ## Technical pillars
 
-<!-- Table: the few things this project deliberately builds together because the problem genuinely needs them at once, not because they were bolted on separately. Explain *why together*, not just list them. Omit if the project has no such deliberate combination — most don't. -->
-
 | Pillar | What it means here |
 |---|---|
-| `<pillar>` | `<why this matters and why it's tied to the others>` |
+| Transactor with request context | One transaction owner carrying tenant and actor; row-level security, audit and the outbox all depend on it, so it comes first. |
+| Real database tests | Concurrency, isolation and recovery behavior only exist in a real engine, so every pattern is verified against PostgreSQL. |
+| Defense in the store | Tenant isolation, immutable ledger and append-only audit are enforced by roles and policies, so application mistakes cannot bypass them. |
+| Explicit schemas and roles | Schemas per bounded context and least-privilege roles are part of the exercise, not scaffolding. |
 
 ## Functional scope
 
-<!-- What the system being built must actually support, as a bullet list of concrete capabilities — not a feature-marketing list, a scope boundary a build sequence can be checked against. -->
+- Tenant, user and membership management
+- Product catalog with soft delete and stock
+- Customers and orders with checkout that decrements stock atomically
+- Idempotent order creation
+- Outbox events delivered by a polling worker
+- Wallet with an immutable ledger credited by sales
+- Audit trail of business actions
+- Tenant isolation through row-level security
+- Read models with joins and keyset-paginated lists over a large seeded dataset
 
 ## Roadmap
 
-<!-- Ordered phases/stages the build proceeds through, each with what it actually establishes. Update this in place as phases complete — mark a phase done when it's done, don't leave it worded as future work after it lands. -->
+All phases are pending. Phase 0 has empty placeholder files for compose and the bootstrap scripts.
 
-0. **`<phase name>`** — `<what this phase establishes and why it comes first/next>`
+0. **Base infrastructure** - compose file and bootstrap scripts creating schemas, roles and grants.
+1. **Base migrations and Transactor** - first migrations, the Transactor on the DI container, tenant context set per transaction.
+2. **Repositories and product CRUD** - write repositories with soft delete.
+3. **Basic checkout** - order, items and stock in one transaction.
+4. **Concurrency** - parallel-load tests and comparison of the three stock strategies.
+5. **Idempotency** - idempotency key on checkout.
+6. **Outbox** - event insert in the checkout transaction and the delivery worker.
+7. **Wallet** - accounts and ledger.
+8. **Row-level security** - policies, isolation tests and the forced-RLS test. Introduced after the problem is visible, not at the start.
+9. **Audit trail** - recorder driven by the Transactor context.
+10. **Read models** - joins, reporting views and keyset pagination over about a million seeded rows, compared with offset using query plans.
+11. **Refactor** - extract stock into an inventory schema with an expand then contract migration.
 
 ## Risks
 
-<!-- Known risks to the roadmap actually landing as planned — an unresolved external dependency, an unvalidated scaling/performance assumption, a technology bet that might not pan out. Not a generic risk register: only a risk specific and real to this roadmap. Omit entirely if there genuinely isn't one. -->
+- Drizzle and drizzle-kit are on a 1.0 release candidate; support for policies and multiple schemas may change or be incomplete, which pushes more work into hand-written SQL.
+- Row-level security can look correct while silently bypassed when connected as a privileged role; only an explicit test catches it.
 
 ## Done criteria
 
-<!-- How to tell the current scope (or a named phase of it) is actually done — specific, falsifiable conditions, not a vibe. If it can't be checked by reading the resulting code/behavior, it isn't specific enough yet. -->
+- Each phase has tests against a real PostgreSQL that fail when the pattern is removed (for example, parallel checkouts oversell stock without the chosen strategy).
+- A tenant cannot read or write another tenant's rows, including through raw SQL on the application role.
+- A forced failure between checkout commit and event delivery loses no event and duplicates none beyond at-least-once.
+- Replaying a request with the same idempotency key returns the stored response without a second effect.
+- Ledger and audit rows cannot be updated or deleted by the application role.
+- A keyset-paginated listing over the seeded dataset is measurably flatter than offset at depth.
 
 ## Stretch goals
 
-<!-- Explicitly non-blocking extensions — real candidates, not blocking scope, deferred once the done criteria above are actually met. Omit if there are none. -->
+- Compare database triggers against application-level audit.
+- Partition the audit table by month.
+- Compare snapshot versus diff storage for audit entries.
 
 ---
 
 ## Non-goals
 
-<!-- Only include this section if a scope boundary here is easy to violate by accident. Omit entirely otherwise. -->
+- Dropping the wallet is the accepted way to shrink scope: every topic stays covered except the ledger and double-spend examples.

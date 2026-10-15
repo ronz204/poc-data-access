@@ -1,35 +1,89 @@
-<!--
-This file ships as part of the harness itself, as the fill-in skeleton for
-this doc category — copy it into a project as-is, then fill it in place
-when bootstrapping (surveyor) or updating (archivist) that project's
-per-component functional reference. Delete these guidance comments once
-every section holds real, grounded content. Ground every claim in the real
-source implementing each component (Step 0) — never infer behavior from a
-filename or from what a similar project usually does.
--->
-
 # Modules
 
-<!-- One sentence: what this file covers and what it deliberately excludes (e.g. "Why these components exist lives in overview.md, not here"). -->
+Functional reference for the components the project builds. None are implemented yet: this file records each component's intended behavior and is updated in place as each one lands. Why the components exist lives in the overview, not here.
 
 ---
 
-## `<Component name>`
+## Transactor
 
-<!-- Repeat this subsection per component. Component names are durable architecture vocabulary — describe the boundary, not the source-tree location that implements it. -->
+**Purpose.** The single place that opens, commits and rolls back database transactions, and that carries per-request context (tenant, actor, request id) into the database session.
 
-**Purpose.** <!-- What this component is responsible for, in one or two sentences. -->
+**Flow.**
+1. A use case asks the Transactor to run a unit of work.
+2. The Transactor begins a transaction and sets the tenant on the session, scoped to that transaction only.
+3. Repositories and queries resolve the transaction-bound executor from the Transactor instead of opening their own.
+4. On success the audit entries and outbox events recorded during the unit of work commit together with the business changes; on failure everything rolls back.
 
-**Flow.** <!-- The actual step-by-step behavior — a numbered list or a short sequence, whichever reads clearer. Describe what really happens, not an idealized version. -->
+**Data shape.**
+```
+context: { tenantId, actorId, requestId }
+```
 
-**Data shape.** <!-- The concrete shape this component reads/writes/exposes. Use a fenced code block for anything structural — never describe a schema or payload in prose when a code block says it exactly. -->
+**Dependencies.** Built on the DI container and the Drizzle client. Everything that writes depends on it.
 
-**Dependencies.** <!-- Optional. What this component depends on or is depended on by, only where that detail isn't already obvious from structure.md's system-wide Topology section — component-specific dependency nuance, not a restatement of the global topology. Omit when Topology already covers it. -->
+## Repositories and read queries
 
-## `<Next component name>`
+**Purpose.** Write-side repositories persist one aggregate each. Read queries serve lists and reports directly from SQL without loading aggregates (CQRS lite).
+
+**Flow.**
+1. Repositories map between domain entities and table rows and always run on the transaction-bound executor.
+2. Soft-deleted rows are excluded by default; restoring is an explicit operation.
+3. Read queries return view models, paginate with a keyset cursor, and may read the reporting views.
+
+## Checkout
+
+**Purpose.** Create an order, its items and the stock decrement atomically, then record the outbox event and the wallet credit.
+
+**Flow.**
+1. Validate the request and resolve the idempotency record.
+2. Decrement stock using the strategy under evaluation (row lock, conditional atomic update, or version check).
+3. Insert order and items with price and name snapshots.
+4. Insert the `OrderPlaced` outbox event and the audit entry.
+5. Commit, then store the response against the idempotency key.
+
+## Idempotency
+
+**Purpose.** Make a repeated write request safe to retry.
+
+**Flow.**
+1. The request carries an idempotency key; the stored record keeps the key, a hash of the request and the saved response.
+2. Same key and same hash returns the saved response; same key with a different hash is rejected as a conflict.
+3. Two concurrent requests with the same key are serialized by a unique constraint, so only one executes.
+
+## Outbox worker
+
+**Purpose.** Deliver events recorded in the outbox exactly as often as needed to never lose one, tolerating duplicates.
+
+**Flow.**
+1. Poll for undelivered events, claiming a batch with row locks that skip rows already claimed by another worker.
+2. Publish each event to the configured sink (log or fake webhook).
+3. Mark delivered rows; unclaimed or failed rows stay pending and are retried.
+
+## Audit trail
+
+**Purpose.** Answer who did what, to which entity, and when, without database triggers.
+
+**Flow.**
+1. The Transactor's context supplies tenant, actor and request id.
+2. A recorder writes one entry per audited action inside the same transaction as the change, so a rollback removes the entry too.
+3. Entries hold an action name, entity type and id, and a diff of changed fields; secret values are never stored.
+
+**Data shape.**
+```
+trailer: tenant, actor, request id, action, entity type, entity id, diff, created at
+```
+
+## Wallet ledger
+
+**Purpose.** Hold tenant balances as an immutable, append-only ledger of entries.
+
+**Flow.**
+1. A movement inserts an entry referencing its origin by type and id, with no foreign key to the origin.
+2. Balance changes use a lock or conditional update so concurrent movements cannot overspend.
+3. Entries are never updated or deleted.
 
 ---
 
 ## Non-goals
 
-<!-- Only include this section if a scope boundary here is easy to violate by accident. Omit entirely otherwise. -->
+- Not a reference for schema or role details; those live in the persistence reference.

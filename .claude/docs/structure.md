@@ -1,44 +1,65 @@
-<!--
-This file ships as part of the harness itself, as the fill-in skeleton for
-this doc category — copy it into a project as-is, then fill it in place
-when bootstrapping (surveyor) or updating (archivist) that project's
-topology reference. Delete these guidance comments once every section holds
-real, grounded content. Ground every claim in the actual stack/config
-(Step 0), never in what a similar project usually looks like.
--->
-
 # Structure
 
-<!-- One sentence: what this file covers and what it deliberately excludes (e.g. "The data model itself lives in database.md, not here"). -->
+Stack, runtime topology and cross-cutting patterns. The data model and database roles live in the persistence reference, not here.
 
 ---
 
 ## Stack
 
-<!-- Table: each major technology choice and why it was made — not just what was picked. -->
-
 | Layer | Choice | Rationale |
 |---|---|---|
-| `<layer>` | `<technology>` | `<why this one>` |
+| Runtime and package manager | Bun | Fast TypeScript execution and test runner without a build step. |
+| Language | TypeScript, strict | Strict flags including unchecked indexed access and verbatim module syntax keep mappings between rows and entities honest. |
+| ORM | Drizzle ORM (1.0 release candidate) | The subject of the study: typed SQL, explicit schemas, migrations through drizzle-kit. |
+| Driver | postgres.js | Driver used by Drizzle for PostgreSQL. |
+| Database | PostgreSQL in a container | Real engine behavior (locks, row-level security, `SKIP LOCKED`) is the thing being tested. |
+| DI container | dockdi | Wires the Transactor, repositories and use cases; keys are classes. |
+| Validation | zod | Validates external input at the boundary. |
+| Ids | UUID v7, generated in the application | Time-ordered ids that suit keyset pagination and index locality; known before insert. |
+| Seeding | drizzle-seed | Generates large datasets to compare pagination strategies. |
 
 ## Topology
 
-<!-- How the parts actually communicate — request flow, sync vs. async boundaries, what talks to what. Prefer a short structural breakdown or an ASCII diagram in a fenced code block over prose when the shape is spatial. -->
+Single process plus a PostgreSQL container. There is no network surface; entry points are scripts that simulate requests.
+
+```
+entry point (simulated request: actor + tenant)
+   -> zod validation
+   -> use case (application layer)
+        -> Transactor: BEGIN, set tenant for the transaction
+             -> domain entities
+             -> repositories (writes) / read queries (reads)
+             -> audit recorder, outbox insert
+           COMMIT
+outbox worker (separate loop) -> polls events -> publishes to log / fake webhook
+```
+
+Layers: a domain layer with no persistence knowledge, an application layer of use cases, repository and query implementations, a data-access layer holding the Transactor, and the database definitions (tables, policies, migrations). Dependencies point inward toward the domain.
 
 ## Infrastructure
 
-<!-- Static infrastructure/provisioning facts outside the persistence layer — hosting model, environments, provisioned resources (queues, caches, CDNs, compute) — and why each was provisioned that way. Persistence-layer infrastructure (the database's own engine/hosting/backup approach) lives in database.md instead, not here. Omit if the project genuinely has none of this (e.g. runs as a single local process). -->
+Local only: one PostgreSQL container started with docker compose. Provisioning scripts for roles, stores, schemas, grants and defaults run once at bootstrap. No queues, caches, CDN or other provisioned resources, and no environments beyond the developer machine. Engine-level details are in the persistence reference.
 
 ## Cross-cutting patterns
 
-<!-- Patterns that apply across components rather than to one of them specifically — auth, background jobs, caching, rate limiting, error handling. State each pattern with its rationale, not just its mechanics. -->
+- **One transaction owner.** Only the Transactor begins a transaction and sets the tenant on it. This is what makes row-level security and audit context impossible to forget.
+- **Tenant isolation lives in the store.** Application code does not filter by tenant as its main defense; policies do, and the application connects as a role that is subject to them.
+- **Atomic side effects.** Audit entries and outbox events are written in the same transaction as the change they describe, so they cannot diverge from it.
+- **Deferred work through the outbox.** Anything that must happen after commit is an event processed by a polling worker, never inline in the request path.
+- **Stateless application.** All state is in PostgreSQL; the process can be restarted at any time.
+- **Reads are bounded.** Every list is keyset-paginated; there are no unbounded fetches.
+- **Secrets stay out of code and logs.** Credentials come from environment files that are not committed; audit entries record that a secret changed, never its value.
+- **Error handling.** Database errors are translated into domain-level errors at the data-access layer so callers do not depend on driver codes.
 
 ## Open architecture decisions
 
-<!-- A choice deliberately not made yet, and what resolving it depends on — a real trade-off being carried, not a task waiting to be scheduled. Once decided, fold the choice and its rationale into Stack/Topology/Cross-cutting patterns above and remove it from here; this section is never a place a resolved decision keeps living. Omit entirely when there's nothing genuinely open. -->
+- **Stock ownership.** Stock starts inside the catalog schema. Extracting it into its own inventory schema is a planned refactor; the trade-off is a second aggregate in the checkout transaction versus simplicity.
+- **Audit capture.** Application-level recording is the baseline. Whether to also compare snapshot versus diff storage, and database triggers, depends on what the first implementation shows.
+- **Concurrency strategy.** Row lock, conditional atomic update and optimistic version check are all implemented for comparison; which one the checkout keeps by default is decided from the measured results.
 
 ---
 
 ## Non-goals
 
-<!-- Only include this section if a scope boundary here is easy to violate by accident. Omit entirely otherwise. -->
+- No HTTP server, authentication or frontend.
+- No production deployment concerns.

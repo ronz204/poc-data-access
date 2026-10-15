@@ -1,50 +1,56 @@
-<!--
-This file ships as part of the harness itself, as the fill-in skeleton for
-this doc category — copy it into a project as-is, then fill it in place
-when bootstrapping (surveyor) or updating (archivist) that project's
-mechanism reference. Unlike structure.md, this file is always created
-for a bootstrapped project, even when the honest content is "not applicable
-here" (nothing here relies on a mechanism worth explaining) — state that
-explicitly rather than omitting the file. Delete these guidance comments
-once every section holds real, grounded content. Ground every claim in the
-real technology/algorithm/protocol actually in play (Step 0) or in
-established domain fact — never invent a mechanism explanation that hasn't
-actually been confirmed.
--->
-
 # Expertise
 
-<!-- One sentence: this file explains *how* a non-trivial mechanism or concept the project depends on actually works — not *whether*, *when*, or *where* it's used; that's structure.md's or database.md's job. If genuinely not applicable, say so plainly here and skip the remaining sections. -->
+How the PostgreSQL mechanisms the project depends on actually behave. Where they are used and who owns them lives elsewhere.
 
 ---
 
 ## Glossary
 
-<!-- Optional. Only for terse, domain- or technology-specific terms that need a one-line definition before the sections below make sense — not a substitute for the sections themselves. Table: term -> what it means here. Omit entirely if nothing needs this. -->
-
 | Term | Meaning |
 |---|---|
-| `<term>` | `<what it means here>` |
+| RLS | Row-level security: per-row policies the engine applies to every statement on a table. |
+| Keyset pagination | Paging by "rows after this sort key" instead of by row count skipped. |
+| Outbox | A table of events written in the same transaction as the change, delivered afterwards. |
+| Ledger | Append-only record where state is derived from entries, never overwritten. |
 
-## `<Mechanism or concept name>`
+## Row-level security and tenant context
 
-<!--
-Repeat this section per mechanism/concept that this project's design leans
-on and that a reader can't be assumed to already know cold — a database
-feature, a protocol behavior, a non-obvious algorithm/data-structure
-property, a domain rule with real consequences if misunderstood. Explain
-the underlying behavior in enough depth that a reader could reason about it
-correctly without re-deriving it from source: what it actually does, what
-guarantee it does/doesn't provide, and the caveat that trips people up.
-Prose is usually right here; use a table only when comparing genuine
-variants of the same mechanism (e.g. competing strategies for the same
-problem).
--->
+A policy is a predicate added to every statement on the table. With the tenant stored in a session setting, the policy compares the row's `tenant_id` to that setting. `SET LOCAL` scopes the setting to the current transaction and reverts at commit or rollback, which matters with pooled connections: a plain `SET` would leak one tenant's value into the next borrower of the connection.
 
-## `<Next mechanism or concept name>`
+Caveats that trip people up:
+
+- Table owners and superusers bypass policies unless the table has `FORCE ROW LEVEL SECURITY`; superusers and roles with the bypass attribute ignore it even then. Connecting as the wrong role silently disables isolation.
+- An unset setting returns an empty string or null depending on how it is read; policies must treat "no tenant" as "no rows", not "all rows".
+- `INSERT` and `UPDATE` need a check expression as well as a using expression, or a tenant could write rows it cannot read back.
+
+## Concurrent stock decrement
+
+Three ways to keep stock from going negative under parallel checkouts:
+
+| Strategy | Mechanism | Trade-off |
+|---|---|---|
+| Row lock | Select the row `FOR UPDATE`, check, then update | Simple and correct; serializes writers on the row and holds the lock across application code. |
+| Conditional atomic update | `UPDATE ... SET stock = stock - n WHERE stock >= n` and check affected rows | Shortest lock window, no read step; the check is in the statement itself. |
+| Optimistic version | Update `WHERE version = v`, retry if no row matched | No locks held while reading; costs retries under contention. |
+
+At the default `READ COMMITTED` isolation a read-then-write without a lock is a race; this is the failure the comparison exists to demonstrate.
+
+## Transactional outbox with SKIP LOCKED
+
+Writing the event in the business transaction removes the dual-write problem: either both the change and the event exist or neither does. Delivery then happens after commit, so it is at least once: a worker can publish and crash before marking the row delivered, and the event is published again. Consumers must tolerate duplicates.
+
+`FOR UPDATE SKIP LOCKED` lets several workers claim different pending rows without blocking each other; locked rows are skipped, not waited for. Ordering across workers is not guaranteed.
+
+## Idempotency keys
+
+The key plus a hash of the request identify one logical operation. A unique constraint on the key decides the winner when two identical requests race: the loser fails or waits and then reads the stored response. The hash distinguishes a legitimate retry from key reuse with a different body, which must be rejected.
+
+## Keyset pagination
+
+`OFFSET n` makes the database walk and discard `n` rows, so cost grows with page depth, and rows inserted between page requests shift the window. Keyset filters on the sort key of the last row seen, `WHERE (created_at, id) < (:c, :i)` with a matching index, so cost is flat and pages are stable. The id tiebreaker is required because timestamps are not unique.
 
 ---
 
 ## Non-goals
 
-<!-- Only include this section if a scope boundary here is easy to violate by accident. Omit entirely otherwise. -->
+- Not a tutorial on Drizzle's API.

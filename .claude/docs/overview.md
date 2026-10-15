@@ -1,37 +1,56 @@
-<!--
-This file ships as part of the harness itself, as the fill-in skeleton for
-this doc category — copy it into a project as-is, then fill it in place
-when bootstrapping (surveyor) or updating (archivist) that project's vision
-reference. Delete these guidance comments once every section holds real,
-grounded content — never leave both a filled section and its comment
-side by side. Same Step 0 discipline as any other artifact: ground every
-claim in the actual codebase/README/stated intent, never assumption.
--->
-
 # Overview
 
-<!-- One sentence: what this file covers and what it deliberately excludes (e.g. "How each part communicates lives in structure.md, not here"). -->
+What this project is for, what it owns, and the domain vocabulary the rest of the knowledge base assumes. Component behavior and topology are deliberately not covered here.
 
 ---
 
 ## Vision
 
-<!-- What problem this system solves, in domain language — not a restatement of the directory tree or a feature list. A future reader should understand *why* the system exists after this section, not just what it contains. -->
+A proof of concept for learning and testing data-persistence patterns with Drizzle ORM on PostgreSQL. The patterns are exercised on a realistic domain instead of isolated toy examples: a multi-tenant mini online store (catalog, customers, orders) with an internal wallet that credits the sales. The domain is chosen so that every pattern has a natural reason to exist, with none bolted on.
+
+The patterns under study:
+
+- Transactor manager built on a DI container and Drizzle
+- Repositories plus CQRS lite (write-side repositories, separate read queries)
+- Audit trail written by the application, not by database triggers
+- Concurrency control (stock decrement, wallet double spend)
+- Idempotent writes
+- Transactional outbox
+- Soft delete
+- Schema migrations, generated and hand-written
+- Multi-tenancy enforced by row-level security
+- Keyset (cursor) pagination
+- Read models with non-trivial joins
+
+The code is a learning vehicle: clarity of each pattern and the ability to test it against a real database matter more than feature breadth.
 
 ## Scope & non-goals
 
-<!-- What the project owns. Then explicit non-goals — a boundary that's easy to assume belongs here but deliberately doesn't. This is the primary home for scope boundaries; the file's closing Non-goals section is only for a boundary that doesn't fit naturally here — don't split one boundary across both sections. -->
+Owned by the project:
+
+- A PostgreSQL database split into schemas by bounded context, with roles and grants provisioned from scripts
+- The data-access layer, repositories, read queries, and use cases that exercise each pattern
+- Tests that run against a real PostgreSQL instance (concurrency, isolation and recovery cannot be verified against a mock)
+
+Explicit non-goals:
+
+- Real authentication: the acting user and tenant are simulated per request
+- Any frontend
+- A real message broker: the outbox publishes to a log or a fake webhook
+- Production hosting, environments beyond local containers, or operations concerns
 
 ## Domain concepts
 
-<!-- Table: the core entities/actors in this domain and how they relate — the vocabulary the rest of the knowledge base assumes. Conceptual, not implementation: what a concept means and what it owns, not which table or class holds it. -->
-
 | Concept | Description |
 |---|---|
-| `<concept>` | `<what it is, what it owns, how it relates to other concepts>` |
-
----
-
-## Non-goals
-
-<!-- Only for a boundary not already covered by Scope & non-goals above — never restate the same boundary in both places. Include only if such a boundary exists and is easy to violate by accident; omit entirely otherwise. -->
+| Tenant | A store. The root of data ownership; every business row belongs to exactly one tenant. |
+| User and membership | A person and their role inside a tenant. Users reach tenant data through memberships. |
+| Product | A sellable item owned by a tenant. Holds price and stock, supports soft delete, carries a version for optimistic locking. |
+| Category | Grouping of products within a tenant. |
+| Customer | A buyer of a tenant. Supports soft delete. |
+| Order and item | A purchase and its lines. Items snapshot the product name and price at purchase time. |
+| Wallet account and entry | A tenant balance and its immutable ledger of movements, credited when sales complete. |
+| Outbox event | A domain event recorded atomically with the change that caused it, delivered later by a worker. |
+| Idempotency record | The stored outcome of a request identified by an idempotency key, replayed on retry. |
+| Audit trail entry | An append-only record of who did what to which entity, with a field-level diff. |
+| Read model | A query-optimized projection (views) used only for reads. |
