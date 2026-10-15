@@ -24,11 +24,11 @@ All objects are referenced with their schema. The migration journal lives in its
 
 | Role | Purpose | Used by |
 |---|---|---|
-| `migrator` | Owns every object; bypasses row-level security. | Migration tooling only |
-| `app_rw` | Reads and writes catalog, sales, wallet and messaging; insert-only on `audit.trailer`; insert and select only on `wallet.entries`. Subject to row-level security. | Application writes |
-| `app_reader` | Select on `reporting` only. Subject to row-level security. | Read queries |
+| `sampler` | Owns every schema and object; creates and migrates. Skips row-level security as owner unless a table forces it. | Migration tooling only |
+| `runner` | Reads and writes platform, catalog, sales and messaging; select and insert only on wallet and audit; select on `reporting`. Subject to row-level security. | Application reads and writes |
+| `relayer` | Select and update on messaging only. Created with `BYPASSRLS` because it claims events across all tenants. | Outbox worker |
 
-The split prevents the application from altering schema, rewriting history (audit, ledger) or escaping tenant isolation. A table owner skips row-level security unless the table forces it, so the application never connects as the owner, and tables use `FORCE ROW LEVEL SECURITY`; a test must verify the isolation actually holds.
+The split prevents the application from altering schema, rewriting history (audit, ledger) or escaping tenant isolation. Privileges are granted as default privileges of `sampler` per schema, so every table a migration creates is covered automatically; a table that needs more than its schema default (for example `wallet.accounts`, which is updated) gets an explicit grant in its own migration. Functions are not executable by `PUBLIC` by default, so a function used by policies needs an explicit execute grant. A table owner skips row-level security unless the table forces it, so the application never connects as the owner, and tables use `FORCE ROW LEVEL SECURITY`; `runner` is the only role the policies filter, so the isolation test must connect as it.
 
 Tenant isolation: every transaction sets `app.tenant_id` locally, and each tenant-scoped table has a policy comparing its `tenant_id` to `current_setting('app.tenant_id')`. A reusable function enables the policy for a given schema and table and is called from hand-written migrations.
 
@@ -52,7 +52,7 @@ Columns, types, keys and foreign keys are modeled in `drizzle/DIAGRAM.md`; this 
 
 ## Infrastructure
 
-Single PostgreSQL instance in a local container. Bootstrap scripts run in two stages: cluster-level roles first, then per-store creation of the database, schemas, grants and default privileges. Credentials come from an uncommitted environment file. No replication or backup.
+Single PostgreSQL instance in a local container with a single database; tests run against it too. Bootstrap scripts run once, idempotently, in two stages: cluster-level roles first (created or re-synced with their passwords), then the store: connection and creation rights, schemas, schema usage with default table privileges, and revocation of permissive defaults. The migration journal lives in the `drizzle` schema. Credentials come from an uncommitted environment file. No replication or backup.
 
 ## Access patterns
 

@@ -2,7 +2,7 @@
 
 A proof of concept for data-persistence patterns with Drizzle ORM on PostgreSQL, exercised on a multi-tenant mini online store with an internal wallet: transactor manager, repositories with CQRS lite, audit trail, concurrency, idempotency, outbox, soft delete, migrations, row-level-security multi-tenancy, keyset pagination. Bun and TypeScript.
 
-The code is currently an empty scaffold: the directories and path aliases exist, the provisioning files are placeholders, and nothing is implemented yet.
+The code is currently an empty scaffold: the directories and path aliases exist, the database provisioning is in place, and nothing else is implemented yet.
 
 ---
 
@@ -38,7 +38,7 @@ Import aliases for these folders are defined in `tsconfig.json`.
 | Task | Command |
 |---|---|
 | Install dependencies | `bun install` |
-| Start PostgreSQL | `docker compose up -d` (compose files are still empty placeholders) |
+| Start PostgreSQL | `docker compose up -d` (copy `docker/data/.env.sample` to `docker/data/.env` and the root `.env.sample` to `.env` first) |
 
 `package.json` defines no scripts, and there is no test runner, linter, build or CI yet. Migrations are meant to run through drizzle-kit once its config exists.
 

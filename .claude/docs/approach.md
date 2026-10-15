@@ -27,7 +27,7 @@ The order and reasoning behind building the project. Why the project exists is i
 
 ## Roadmap
 
-All phases are pending. Phase 0 has empty placeholder files for compose and the bootstrap scripts.
+Phase 0 is done; every other phase is pending.
 
 0. **Base infrastructure** - compose file and bootstrap scripts creating schemas, roles and grants.
 1. **Base migrations and Transactor** - first migrations, the Transactor on the DI container, tenant context set per transaction.
