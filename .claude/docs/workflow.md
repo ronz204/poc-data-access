@@ -1,0 +1,115 @@
+# Workflow
+
+How the project is expected to behave once finished: the capabilities it offers and the flow of each one, described from the outside. Nothing here is implemented yet. Component internals, schema details and build order are deliberately not covered.
+
+---
+
+## End state at a glance
+
+A multi-tenant mini online store with an internal wallet, driven by simulated requests. Each request carries a tenant, an acting user and an optional idempotency key. The system runs the request as one unit of work, and everything it records (business rows, audit entry, outbox event, wallet movement) commits together or not at all. A background worker later delivers the recorded events.
+
+```
+request (tenant, actor, idempotency key)
+  -> use case
+      -> one transaction: tenant context set, business change,
+         audit entry, outbox event, wallet movement
+  -> response (stored against the idempotency key)
+
+worker (separate loop)
+  -> claims pending outbox events -> publishes to log / fake webhook -> marks delivered
+```
+
+## Capabilities
+
+### Tenants, users and memberships
+
+- A tenant (store) exists with users attached through memberships that carry a role.
+- Every request acts as one user inside one tenant. Authentication is simulated: the context is supplied, not verified.
+- Whatever the application asks, a request only ever sees and changes its own tenant's rows.
+
+### Product catalog
+
+- Create, update and list products and categories inside a tenant.
+- Deleting a product or customer is a soft delete: the row disappears from normal reads but stays stored, and can be restored explicitly.
+- A deleted name or code can be reused by a new live row.
+- Concurrent edits to the same product are detected through its version instead of overwriting silently.
+
+### Customers
+
+- Create, update, soft delete and restore customers of a tenant.
+
+### Checkout
+
+The central write flow. A customer buys one or more products.
+
+1. The request is validated and its idempotency key is resolved.
+2. Stock is decremented for each line; if any line lacks stock the whole checkout fails and nothing changes.
+3. The order and its items are created, each item keeping the product name and price seen at purchase time.
+4. An `OrderPlaced` event is recorded in the outbox, and an audit entry is written.
+5. The sale is credited to the tenant's wallet.
+6. The transaction commits, and the response is stored against the idempotency key.
+
+Outcomes the flow guarantees:
+
+| Situation | Result |
+|---|---|
+| Many shoppers buy the last units at once | Stock never goes negative; surplus requests fail cleanly |
+| The same request is retried with the same key | The stored response is returned, with no second order, decrement or credit |
+| The same key arrives with a different payload | Rejected as a conflict |
+| Two identical requests arrive at the same moment | Only one executes; the other waits for or receives its outcome |
+| Anything fails midway | Stock, order, event, audit entry and credit all roll back together |
+
+### Wallet
+
+- Each tenant has an account whose balance is the sum of an append-only ledger of entries.
+- Entries are created by sales and by explicit movements, each pointing to what originated it.
+- A debit that would overspend the balance is refused, even when many debits race.
+- Entries can never be edited or removed.
+
+### Event delivery
+
+- Events are written in the same transaction as the change that caused them, so an event exists if and only if its change committed.
+- A worker repeatedly claims a batch of pending events, publishes each to the configured sink, and marks it delivered.
+- If publishing or the worker fails, events stay pending and are retried. Delivery is at least once, so consumers must tolerate duplicates.
+- Several workers can run together without taking the same event.
+
+### Audit trail
+
+- Every business action records who did it, in which tenant, which entity it touched and a field-level diff of what changed.
+- The entry commits with the change, so a rolled-back action leaves no trace.
+- Entries are append-only and never hold secret values.
+
+### Reads and reports
+
+- Lists (products, orders, customers, audit entries) are paginated with an opaque cursor, so a page deep into a large dataset costs the same as the first.
+- Reports run over read-only views with joins, for example sales per product, revenue per customer, and wallet balance with recent movements.
+- Reads use a separate, read-only role and never load aggregates.
+- Soft-deleted rows are hidden unless a read explicitly asks for them.
+
+## Behavior common to every request
+
+| Concern | Behavior |
+|---|---|
+| Unit of work | One transaction per use case, owned by a single place; repositories and queries never open their own |
+| Tenant isolation | The tenant is set on the database session for that transaction only, and row-level policies filter every table |
+| Identity | Ids are generated by the application before insert |
+| Money and stock | Money is integer minor units in one currency; stock is an integer that cannot be negative |
+| Input | Validated at the entry of each use case before any database work |
+| Failure | Rolls back everything the request recorded |
+
+## A complete scenario
+
+1. A tenant has users, products with stock, a customer and a wallet.
+2. The customer checks out two products. The order is created, stock drops, an event and audit entry are recorded, and the wallet is credited.
+3. The same request is replayed and returns the original response with no further effect.
+4. The worker delivers the `OrderPlaced` event to the sink; killing it before it marks the event delivered causes redelivery, never loss.
+5. Another tenant querying the same tables, even by raw SQL on the application role, sees none of these rows.
+6. A listing over a million seeded orders pages in constant time through the cursor.
+7. The audit trail shows who placed the order and what changed, and the ledger shows the credit that cannot be altered.
+
+---
+
+## Non-goals
+
+- Not a spec of any one capability's contract; those belong in per-slice specs once written.
+- No real login, frontend or message broker: the actor is simulated and events go to a log or fake webhook.
