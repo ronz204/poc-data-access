@@ -4,18 +4,18 @@ import { z } from "zod";
 
 const env = z
   .object({
-    SAMPLER_URL: z.url(),
-    RUNNER_URL: z.url(),
-    RELAYER_URL: z.url(),
+    POSTGRES_SAMPLER_URL: z.url(),
+    POSTGRES_RUNNER_URL: z.url(),
+    POSTGRES_RELAYER_URL: z.url(),
   })
   .parse(Bun.env);
 
 const connect = (url: string) => postgres(url, { max: 1, onnotice: () => {} });
 
 const clients = {
-  sampler: connect(env.SAMPLER_URL),
-  runner: connect(env.RUNNER_URL),
-  relayer: connect(env.RELAYER_URL),
+  sampler: connect(env.POSTGRES_SAMPLER_URL),
+  runner: connect(env.POSTGRES_RUNNER_URL),
+  relayer: connect(env.POSTGRES_RELAYER_URL),
 };
 
 const WRITE = ["DELETE", "INSERT", "SELECT", "UPDATE"];
@@ -85,7 +85,7 @@ check("every role connects with its own password", async () => {
 });
 
 check("a wrong password is rejected", async () => {
-  const url = new URL(env.RUNNER_URL);
+  const url = new URL(env.POSTGRES_RUNNER_URL);
   url.password = "wrong";
   const intruder = connect(url.href);
   await rejects(intruder`SELECT 1`, INVALID_PASSWORD);
