@@ -38,9 +38,12 @@ Import aliases for these folders are defined in `tsconfig.json`.
 | Task | Command |
 |---|---|
 | Install dependencies | `bun install` |
-| Start PostgreSQL | `docker compose up -d` (copy `docker/data/.env.sample` to `docker/data/.env` and the root `.env.sample` to `.env` first) |
+| Start PostgreSQL | `bun run db:up` (copy `docker/data/.env.sample` to `docker/data/.env` and the root `.env.sample` to `.env` first) |
+| Stop PostgreSQL | `bun run db:down` |
+| Recreate the database from scratch | `bun run db:reset`; the bootstrap scripts only run on an empty volume |
+| Verify roles, schemas and grants | `bun run db:check` |
 
-`package.json` defines no scripts, and there is no test runner, linter, build or CI yet. Migrations are meant to run through drizzle-kit once its config exists.
+There is no test runner, linter, build or CI yet. Migrations are meant to run through drizzle-kit once its config exists.
 
 ## Permissions
 
