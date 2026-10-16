@@ -6,7 +6,7 @@ Build progress of poc-persists-data, one step per phase of the approach; not a c
 
 ## Overview
 
-**Overall progress: 9 / 72 tasks — 13%**
+**Overall progress: 9 / 74 tasks — 12%**
 
 | # | Step | Status | Progress |
 |---|---|---|---|
@@ -21,7 +21,7 @@ Build progress of poc-persists-data, one step per phase of the approach; not a c
 | 8 | [Wallet](#8--wallet) | 🔲 Not started | 0/7 — 0% |
 | 9 | [Audit trail](#9--audit-trail) | 🔲 Not started | 0/4 — 0% |
 | 10 | [Row-level security](#10--row-level-security) | 🔲 Not started | 0/5 — 0% |
-| 11 | [Read models](#11--read-models) | 🔲 Not started | 0/4 — 0% |
+| 11 | [Read models](#11--read-models) | 🔲 Not started | 0/6 — 0% |
 | 12 | [Refactor](#12--refactor) | 🔲 Not started | 0/3 — 0% |
 | 13 | [HTTP surface](#13--http-surface) | 🔲 Not started | 0/4 — 0% |
 
@@ -145,12 +145,14 @@ Introduced after the problem is visible, not at the start.
 
 ## 11 — Read models
 
-Slice: sales-reporting (not yet specified).
+Slice: sales-reporting.
 
+- [ ] `reader` role in the bootstrap scripts and its connection setting; `runner` loses its read on `reporting`
 - [ ] Seed about a million rows
-- [ ] Read queries with joins and reporting views
-- [ ] Keyset-paginated listings
-- [ ] Query-plan comparison showing keyset flatter than offset at depth
+- [ ] Reporting views with a tenant predicate and security barrier, and one materialized view with a throttled concurrent refresh
+- [ ] Reports: sales per product and month, top customers by revenue, low stock and rotation, keyset-paginated where they list
+- [ ] Isolation tests as `reader`: only the reporting views, only the current tenant's rows
+- [ ] Query-plan comparison: materialized against live, and keyset flatter than offset at depth
 
 ## 12 — Refactor
 
