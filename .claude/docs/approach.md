@@ -45,8 +45,7 @@ Phases 0 and 1 are done; every other phase is pending. Each phase names the slic
 12. **Refactor** (stock-inventory) - extract stock into an inventory schema with an expand then contract migration: dual-write, backfill, verification, an authority switch and the final contract, with the existing tests passing at every step.
 13. **HTTP endpoints (planned)** (http-endpoints) - Elysia routes over the use cases: idempotency header, simulated tenant and actor context, zod validation at the boundary, error mapping.
 
-Checkout grows by steps. Phase 4 builds the validation, the stock reservation and the order; idempotency, the outbox event, the wallet credit and the audit entry are added by their own phases, and the acceptance criteria that mention them are checked then. Slices built before the audit and row-level-security phases gain their audit calls and policies when those phases land. The slice http-endpoints has no spec yet.
-
+Checkout grows by steps. Phase 4 builds the validation, the stock reservation and the order; idempotency, the outbox event, the wallet credit and the audit entry are added by their own phases, and the acceptance criteria that mention them are checked then. Slices built before the audit and row-level-security phases gain their audit calls and policies when those phases land.
 ## Risks
 
 - Drizzle and drizzle-kit are on a 1.0 release candidate; support for policies and multiple schemas may change or be incomplete, which pushes more work into hand-written SQL.
