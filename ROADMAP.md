@@ -6,22 +6,22 @@ Build progress of poc-persists-data, one step per phase of the approach; not a c
 
 ## Overview
 
-**Overall progress: 9 / 77 tasks — 12%**
+**Overall progress: 12 / 78 tasks — 15%**
 
 | # | Step | Status | Progress |
 |---|---|---|---|
 | 0 | [Base infrastructure](#0--base-infrastructure) | ✅ Done | 4/4 — 100% |
 | 1 | [Base migrations and Transactor](#1--base-migrations-and-transactor) | ✅ Done | 5/5 — 100% |
-| 2 | [Identity](#2--identity) | 🔲 Not started | 0/8 — 0% |
+| 2 | [Identity](#2--identity) | 🔄 In progress | 1/8 — 13% |
 | 3 | [Catalog and customers](#3--catalog-and-customers) | 🔲 Not started | 0/5 — 0% |
 | 4 | [Basic checkout](#4--basic-checkout) | 🔲 Not started | 0/5 — 0% |
 | 5 | [Concurrency](#5--concurrency) | 🔲 Not started | 0/6 — 0% |
 | 6 | [Idempotency](#6--idempotency) | 🔲 Not started | 0/4 — 0% |
-| 7 | [Outbox](#7--outbox) | 🔲 Not started | 0/8 — 0% |
+| 7 | [Outbox](#7--outbox) | 🔄 In progress | 1/9 — 11% |
 | 8 | [Wallet](#8--wallet) | 🔲 Not started | 0/7 — 0% |
 | 9 | [Audit trail](#9--audit-trail) | 🔲 Not started | 0/4 — 0% |
 | 10 | [Row-level security](#10--row-level-security) | 🔲 Not started | 0/5 — 0% |
-| 11 | [Read models](#11--read-models) | 🔲 Not started | 0/6 — 0% |
+| 11 | [Read models](#11--read-models) | 🔄 In progress | 1/6 — 17% |
 | 12 | [Refactor](#12--refactor) | 🔲 Not started | 0/5 — 0% |
 | 13 | [HTTP endpoints](#13--http-endpoints) | 🔲 Not started | 0/5 — 0% |
 
@@ -52,7 +52,7 @@ The Transactor comes first: row-level security, audit and the outbox all depend 
 
 Slices: tenant-onboarding, member-invitation. Everything after this needs a tenant and an actor.
 
-- [ ] Memberships migration: own id, `removed_at`, unique active membership per tenant and user
+- [x] Memberships migration: own id, `removed_at`, unique active membership per tenant and user
 - [ ] Transactor operation that enters a tenant, used only by create tenant
 - [ ] Email value object and sign-up
 - [ ] Create tenant: tenant and owner membership atomically
@@ -104,7 +104,8 @@ Slice: idempotency-keys.
 Slice: outbox-delivery.
 
 - [ ] Outbox table with retry columns
-- [ ] Redis in the compose file and the BullMQ queue
+- [x] Redis in the compose file, with append-only persistence and a password
+- [ ] BullMQ queue and its connection setting
 - [ ] `OrderPlaced` event inserted in the checkout transaction
 - [ ] Polling worker claiming batches with skip-locked row locks, enqueueing with the event id as job id, with timeouts
 - [ ] Retry with backoff and the failed state
@@ -126,7 +127,7 @@ Slice: wallet-ledger.
 
 ## 9 — Audit trail
 
-Slice: audit-recording. The trail table already exists from the base migration.
+Slice: audit-recording. The trail table already exists, created by the second platform migration.
 
 - [ ] Recorder driven by the Transactor context, with per-action allowlists
 - [ ] Business actions of every earlier slice audited in the same transaction, with secret values excluded
@@ -147,7 +148,7 @@ Introduced after the problem is visible, not at the start.
 
 Slice: sales-reporting.
 
-- [ ] `reader` role in the bootstrap scripts and its connection setting; `runner` loses its read on `reporting`
+- [x] `reader` role in the bootstrap scripts and its connection setting; `runner` loses its read on `reporting`
 - [ ] Seed about a million rows
 - [ ] Reporting views with a tenant predicate and security barrier, and one materialized view with a throttled concurrent refresh
 - [ ] Reports: sales per product and month, top customers by revenue, low stock and rotation, keyset-paginated where they list
