@@ -31,7 +31,7 @@ Non-goals:
 | Use case | Transactor context | Input | Effect |
 |---|---|---|---|
 | Sign up user | `system(origin)`, no actor, no tenant | email, name | Inserts a user with a normalized email. |
-| Create tenant | `platform(actorId)` | name | Inserts the tenant and an `owner` membership for the actor in the same transaction. |
+| Create tenant | `platform(actorId)` | name | Inserts the tenant, enters it (see below), then inserts an `owner` membership for the actor, all in the same transaction. |
 | Change role | `tenant(tenantId, actorId)` | target user, new role | Updates the target's active membership role. |
 | Remove member | `tenant(tenantId, actorId)` | target user | Soft-deletes the target's active membership. |
 | Leave tenant | `tenant(tenantId, actorId)` | none | Soft-deletes the actor's own active membership. |
@@ -53,6 +53,10 @@ No role change, removal or departure may leave the tenant without an active owne
 
 Emails are normalized in the domain (trimmed and lowercased) by a value object before they are persisted or compared. The database keeps a plain unique constraint on the stored value, which is correct only because every write goes through that normalization.
 
+### Entering the tenant
+
+A unit of work that starts in a platform context has no tenant, yet the owner membership and the audit entry of a new tenant are tenant-scoped rows. So the Transactor offers one operation, entering a tenant, which re-applies the tenant setting for the rest of the transaction. Create tenant uses it once, for the tenant it has just inserted, and no other use case may. With it the normal row-level policies apply without special cases, and `tenant.created` is written with the new tenant, so it appears in that tenant's own trail.
+
 ### Memberships table (target shape)
 
 ```
@@ -71,7 +75,7 @@ A removed membership is kept; a user who returns gets a new row.
 
 ### Audited actions
 
-`user.signed_up`, `tenant.created`, `membership.created`, `membership.role_changed`, `membership.removed`, `membership.left`. `tenant.created` runs in a platform context and is written with a null tenant, so it does not appear in the new tenant's own trail. The other membership actions run in the tenant's context.
+`user.signed_up`, `tenant.created`, `membership.created`, `membership.role_changed`, `membership.removed`, `membership.left`. Every one is written with its tenant except `user.signed_up`, which has none. `tenant.created` is written after the new tenant has been entered, so it appears in that tenant's own trail; the membership actions run in the tenant's context.
 
 ### Current state
 
@@ -82,6 +86,7 @@ The three tables exist from the platform base migration with a composite primary
 - A tenant always has at least one active owner. Several owners may coexist.
 - Every operation that changes a tenant's memberships locks that tenant's row (`SELECT ... FOR UPDATE` on `platform.tenants`) before reading the current owners, so two concurrent changes cannot each see another owner and both remove one.
 - A tenant and its creator's owner membership are created in one transaction; neither exists without the other.
+- A unit of work can enter a tenant only through Create tenant, once, and only for the tenant it has just created.
 - At most one active membership exists per tenant and user.
 - Removing or leaving never deletes a membership row; it sets `removed_at`.
 - Admission considers only active memberships; a removed member is not admitted.
@@ -100,6 +105,7 @@ Integration tests against a real PostgreSQL, using vitest once it is introduced:
 
 - Sign-up stores the email trimmed and lowercased; signing up with a case or whitespace variant of an existing email fails.
 - Creating a tenant yields the tenant and exactly one `owner` membership for the creator; a failure after inserting the tenant leaves neither.
+- Creating a tenant writes `tenant.created` with the new tenant, and the owner can read it in that tenant's trail; a use case other than Create tenant cannot enter a tenant.
 - The last owner cannot be demoted, removed or leave.
 - Two owners concurrently demoting each other: exactly one succeeds, and the tenant keeps one owner.
 - An admin cannot change roles, cannot remove an owner or admin, and can remove a member.

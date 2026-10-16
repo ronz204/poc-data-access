@@ -13,7 +13,7 @@ Owns:
 - Products: create, edit (name, price, category), adjust stock, soft delete, restore, list, get.
 - Categories: create, rename, delete, list.
 - The tables `catalog.products` and `catalog.categories`.
-- The stock rules: the value can never be negative, and every change to a product bumps its version.
+- The stock rules: the value can never be negative, and every stock change bumps the product's stock version.
 
 Permissions follow the role matrix of tenant-onboarding, resolved through its admission use case: owner and admin write, member reads.
 
@@ -42,7 +42,8 @@ catalog.products(
   name text not null,
   price_cents bigint not null check (price_cents >= 0),
   stock integer not null check (stock >= 0),
-  version integer not null,
+  version integer not null,              -- protects the product's data
+  stock_version integer not null,        -- changes with every stock change
   created_at timestamptz not null, updated_at timestamptz not null,
   deleted_at timestamptz null
 )
@@ -60,9 +61,9 @@ Money is stored as integer minor units in a single fixed currency. Ids are UUID 
 
 | Use case | Who | Effect |
 |---|---|---|
-| Create product | owner, admin | Inserts a live product with version 1. |
-| Edit product | owner, admin | Changes name, price or category; requires the expected version. |
-| Adjust stock | owner, admin | Applies a positive or negative delta to stock; requires the expected version; fails if the result would be negative. |
+| Create product | owner, admin | Inserts a live product with `version` 1 and `stock_version` 1. |
+| Edit product | owner, admin | Changes name, price or category; requires the expected `version`. |
+| Adjust stock | owner, admin | Applies a positive or negative delta atomically (`stock = stock + delta WHERE stock + delta >= 0`); carries no expected version; fails if the result would be negative. |
 | Delete product | owner, admin | Sets `deleted_at`; deleting an already deleted product fails as not found. (Assumed default.) |
 | Restore product | owner, admin | Clears `deleted_at`; fails with a conflict if a live product with the same name exists. |
 | List products | member and above; include-deleted only for owner and admin | Keyset paginated by `(created_at, id)` with a bounded page size and an optional category filter. (Assumed default.) |
@@ -71,11 +72,20 @@ Money is stored as integer minor units in a single fixed currency. Ids are UUID 
 
 ### Versioning
 
-Every modification of a product increments `version` and sets `updated_at`: editing data, adjusting stock, restoring, and stock decrements performed by other slices. Edits and manual adjustments must carry the expected version and fail with a conflict if it has changed, so they cannot overwrite a concurrent change.
+Two counters, so that stock movements never invalidate a data edit:
+
+- `version` protects the product's data. It increments on every edit of name, price or category, on delete and on restore. Edits must carry the expected `version` and fail with a conflict if it has changed, so they cannot overwrite a concurrent edit.
+- `stock_version` increments on every stock change, whether a manual adjustment or a decrement performed by another slice, and is what the optimistic strategy of order-checkout compares.
+
+Every change of either kind sets `updated_at`. A busy product sells all the time, so with a single counter every sale would make an administrator's edit stale.
 
 ### Deleted products
 
 A deleted product is excluded from every read by default. Owner and admin can include deleted products explicitly in the list. A deleted product cannot be edited, adjusted or sold until restored. Its name becomes available for a new live product.
+
+### Privileges
+
+Products are never physically deleted, so the application role has no delete privilege on them. Categories are the only hard-deleted table of the catalog: the application role holds an explicit delete grant on `catalog.categories` and on nothing else in the schema.
 
 ### Audited actions
 
@@ -90,7 +100,8 @@ Design only: there is no model, migration or code for the catalog yet.
 - Stock is never negative; the check constraint is the last line of defense, whichever slice changes it.
 - Price is never negative.
 - A tenant has at most one live product per name, and one category per name.
-- Every product modification increments `version`, and an edit carrying a stale version never applies.
+- Every data modification increments `version`, and an edit carrying a stale version never applies; stock changes do not touch `version`.
+- Every stock change increments `stock_version`.
 - A deleted product is invisible by default and can never be modified or sold.
 - A product is never physically deleted.
 - A product references only a category of its own tenant, enforced by a composite foreign key.
@@ -110,9 +121,10 @@ Integration tests against a real PostgreSQL, using vitest once it is introduced:
 - A duplicate live name in the same tenant fails; the same name in another tenant works; a deleted name can be reused.
 - A negative price or stock is rejected by the database.
 - A stock adjustment that would go negative fails and leaves the stock unchanged.
-- Two concurrent adjustments with the same expected version: exactly one applies.
-- An edit with a stale version fails with a conflict.
-- Every modification bumps `version` and `updated_at`.
+- Two concurrent edits with the same expected `version`: exactly one applies.
+- An edit with a stale `version` fails with a conflict; a sale or a stock adjustment between the read and the edit does not make it stale.
+- Two concurrent stock adjustments both apply when stock allows; one that would make stock negative fails and leaves it unchanged.
+- Every data modification bumps `version`, every stock change bumps `stock_version`, and both set `updated_at`.
 - A deleted product is hidden from get and list; include-deleted shows it to an owner or admin only; editing or adjusting it fails.
 - Restore works, bumps the version, and fails with a conflict when a live product has the same name.
 - Deleting a category leaves its products alive with a null category and an unchanged tenant; renaming a category to an existing name fails.

@@ -75,7 +75,7 @@ A query listing the current tenant's entries:
 - Only owner and admin may read, decided through the admission use case of tenant-onboarding.
 - Served by the read side, not through aggregates.
 
-Entries with a null tenant (platform-level actions such as creating a tenant or signing up a user) are never visible to the application role. This is by design.
+Entries with a null tenant (platform-level actions such as signing up a user) are never visible to the application role. This is by design.
 
 ### Policies
 

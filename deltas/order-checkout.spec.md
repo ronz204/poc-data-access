@@ -77,7 +77,7 @@ customerId, lines: [{ productId, qty }]
 
 - The status is `placed`; the check constraint admits no other value for now.
 - `total_cents` is the sum of `price_snapshot_cents * qty` over the order's items, computed inside the transaction from the snapshots and never taken from the client. (Assumed default.)
-- Orders and items are immutable: no update or delete path exists. (Assumed default.)
+- Orders and items are immutable: their row-level policies allow select and insert only, and the application role has no delete privilege on them.
 
 ### Stock reservation
 
@@ -87,12 +87,12 @@ One port, "reserve stock", with three interchangeable implementations selected b
 |---|---|
 | Row lock | Select the product `FOR UPDATE`, check, then update. |
 | Conditional atomic update | `stock = stock - qty WHERE stock >= qty`, then check the affected rows. This is the default. |
-| Optimistic version | Update `WHERE version = expected`; on conflict retry up to a bound, then fail with a contention error. (Assumed default bound: 3.) |
+| Optimistic version | Update `WHERE stock_version = expected`; on conflict retry up to a bound, then fail with a contention error. (Assumed default bound: 3.) |
 
 The contract is identical for all three:
 
 - All-or-nothing across the request's lines.
-- Every successful decrement increments the product's version and sets `updated_at`, as the product-catalog slice defines.
+- Every successful decrement increments the product's `stock_version`, not its data `version`, and sets `updated_at`, as the product-catalog slice defines.
 - Lines are processed ordered by product id, so concurrent checkouts take locks in the same order and cannot deadlock each other.
 - The reservation statement itself requires the product to be live (not deleted), in all three strategies, so a product deleted after the validation step cannot be sold.
 - Correctness does not depend on a serializable isolation level; the default `READ COMMITTED` is enough.
@@ -169,7 +169,7 @@ Locks are always taken in the same order: product rows by id, then the wallet ac
 
 Integration tests against a real PostgreSQL, using vitest once it is introduced. Concurrency tests run once per strategy.
 
-- A single checkout creates the order and items, decrements stock, bumps the products' versions, and records the event, the credit and the audit entry.
+- A single checkout creates the order and items, decrements stock, bumps the products' stock versions, and records the event, the credit and the audit entry.
 - 100 concurrent checkouts for a product with stock `S` (via `Promise.all`) sell exactly `S` units, leave stock at 0, make the surplus fail cleanly and never produce negative stock.
 - Concurrent multi-line checkouts listing the same products in opposite orders do not deadlock.
 - Insufficient stock on one of several lines rolls back the other decrements and every other effect, and reports all lacking lines.
