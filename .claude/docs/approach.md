@@ -32,7 +32,7 @@ Phases 0 and 1 are done; every other phase is pending. Each phase names the slic
 
 0. **Base infrastructure** - compose file and bootstrap scripts creating schemas, roles and grants.
 1. **Base migrations and Transactor** - first migrations, the Transactor on the DI container, tenant context set per transaction.
-2. **Identity** (tenant-onboarding, member-invitation) - users, tenants, memberships and invitations; admission; the Transactor operation that enters a tenant. Everything after this needs a tenant and an actor.
+2. **Identity** (tenant-onboarding, member-invitation) - users, tenants, memberships and invitations; admission. Everything after this needs a tenant and an actor.
 3. **Catalog and customers** (product-catalog, customer-records) - write repositories with soft delete and explicit restore, versioned product edits, categories.
 4. **Basic checkout** (order-checkout) - order, items and stock in one transaction, with the conditional atomic update as the stock strategy.
 5. **Concurrency** - parallel-load tests and the three interchangeable stock strategies compared.

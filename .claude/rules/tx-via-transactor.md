@@ -16,7 +16,7 @@ This governs how code touches the database for writes: one component owns transa
 - Repositories and queries never open their own transaction or connection; they resolve the executor bound to the current unit of work, because a second connection would not see uncommitted changes and would break atomicity of audit entries and outbox events.
 - The tenant is set with a transaction-scoped setting (`SET LOCAL`), never a session-wide `SET`, because pooled connections would carry one tenant's value into the next request.
 - Use cases that need several writes to commit or fail together call the Transactor once and pass the unit of work down, rather than nesting independent transactions.
-- The one operation that changes a run's tenant after it has started, entering the tenant that a create-tenant run has just inserted, belongs to the Transactor too and is reserved for that use case, because a second place changing the tenant setting would reopen the leak between requests that transaction-scoped settings close.
+- A run's tenant never changes after the run starts: the context is fixed when the Transactor opens the unit of work, because a second place changing the tenant setting would reopen the leak between requests that transaction-scoped settings close.
 
 ---
 

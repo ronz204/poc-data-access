@@ -14,8 +14,6 @@ Functional reference for the components the project builds. Only the Transactor 
 3. It opens a DI scope bound to that transaction, with the transaction-bound executor and the context, and resolves the entry service from it, so repositories and queries receive the executor instead of opening their own.
 4. On success the audit entries and outbox events recorded during the unit of work commit together with the business changes; on failure everything rolls back. Driver errors leave the Transactor classified as persistence errors.
 5. A run never nests: a use case that needs several writes calls the Transactor once and passes the unit of work down.
-6. A unit of work that starts with an actor and no tenant (a platform run) can enter a tenant once, which re-applies the tenant setting for the rest of the transaction. Only creating a tenant does this, for the tenant it has just inserted, so that its own rows and audit entry pass the normal policies. The operation checks that the tenant row was inserted by this very transaction, so an unknown tenant or one from an earlier transaction is refused; a context that already has a tenant, or has no actor, cannot enter. Each run works on its own copy of the context, so entering never changes the object the caller built and may reuse.
-
 **Data shape.**
 ```
 context (built only through these three constructors):
@@ -94,10 +92,10 @@ The worker is a separate process with a polling loop of configurable batch size 
 
 **Data shape.**
 ```
-trailer: tenant (nullable), actor (nullable), origin, action, entity type, entity id, metadata, transaction id, occurred at
+trailer: tenant, actor (nullable), origin, action, entity type, entity id, metadata, transaction id, occurred at
 ```
 
-An entry without an actor comes from a system run; its origin says which process wrote it. An entry without a tenant belongs to an action that has none, such as signing up a user.
+Every entry belongs to a tenant: the trail traces what happens inside tenants, so actions outside any tenant (signing up a user, creating a tenant) are not audited, even when they span several steps. An entry without an actor comes from a system run inside a tenant; its origin says which process wrote it.
 
 ## Wallet ledger
 

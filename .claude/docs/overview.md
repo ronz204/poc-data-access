@@ -55,5 +55,5 @@ Explicit non-goals:
 | Wallet account and entry | A tenant balance and its immutable ledger of movements, credited when sales complete. |
 | Outbox event | A domain event recorded atomically with the change that caused it, handed later by a worker to a queue. |
 | Idempotency record | The stored outcome of a request identified by an idempotency key, replayed on retry. |
-| Audit trail entry | An append-only record of who did what to which entity, with a field-level diff. |
+| Audit trail entry | An append-only record of who did what to which entity inside a tenant, with a field-level diff. Actions outside any tenant, such as signing up or creating a tenant, are not recorded. |
 | Read model | A query-optimized projection (views) used only for reads. |
