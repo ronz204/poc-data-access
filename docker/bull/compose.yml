@@ -1,0 +1,22 @@
+services:
+  pattern-queues:
+    image: redis:8-alpine
+    container_name: pattern-queues
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    networks:
+      - pattern-network
+    mem_limit: 1536m
+    volumes:
+      - pattern-queues-data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf:ro
+      - ./secrets/users.acl:/usr/local/etc/redis/users.acl:ro
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli --user probe --pass probe --no-auth-warning ping | grep -q PONG"]
+      start_period: 10s
+      start_interval: 1s
+      interval: 10s
+      timeout: 5s
+      retries: 5
