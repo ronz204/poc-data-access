@@ -6,7 +6,7 @@ Build progress of poc-persists-data, one step per phase of the approach; not a c
 
 ## Overview
 
-**Overall progress: 9 / 76 tasks — 12%**
+**Overall progress: 9 / 77 tasks — 12%**
 
 | # | Step | Status | Progress |
 |---|---|---|---|
@@ -23,7 +23,7 @@ Build progress of poc-persists-data, one step per phase of the approach; not a c
 | 10 | [Row-level security](#10--row-level-security) | 🔲 Not started | 0/5 — 0% |
 | 11 | [Read models](#11--read-models) | 🔲 Not started | 0/6 — 0% |
 | 12 | [Refactor](#12--refactor) | 🔲 Not started | 0/5 — 0% |
-| 13 | [HTTP surface](#13--http-surface) | 🔲 Not started | 0/4 — 0% |
+| 13 | [HTTP endpoints](#13--http-endpoints) | 🔲 Not started | 0/5 — 0% |
 
 Status legend: 🔲 Not started · 🔄 In progress · ✅ Done (only once every task under it is checked).
 
@@ -164,14 +164,15 @@ Slice: stock-inventory.
 - [ ] Switch authority to inventory, reversible by flipping the reads back
 - [ ] Contract migration dropping the old columns, with the existing tests still passing
 
-## 13 — HTTP surface
+## 13 — HTTP endpoints
 
-Slice: http-endpoints (planned, not yet specified).
+Slice: http-endpoints. Routes are added slice by slice as each use case lands.
 
-- [ ] Elysia routes over the use cases
-- [ ] Idempotency header and the simulated tenant and actor context
-- [ ] zod validation at the boundary and error mapping
-- [ ] Tests over HTTP
+- [ ] Elysia application with the simulated tenant and actor context and the admission check
+- [ ] Routes over the use cases, with the idempotency header on the money-moving ones
+- [ ] zod validation at the boundary, problem+json error mapping and the pagination envelope
+- [ ] OpenAPI document generated from the route schemas, and the health endpoints
+- [ ] Tests over HTTP, including the error table and graceful shutdown
 
 ---
 
