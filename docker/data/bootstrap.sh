@@ -4,7 +4,7 @@ bootstrap() (
   set -euo pipefail
 
   : "${POSTGRES_USER:?}" "${POSTGRES_DB:?}"
-  : "${SAMPLER_PASSWORD:?}" "${RUNNER_PASSWORD:?}" "${RELAYER_PASSWORD:?}"
+  : "${SAMPLER_PASSWORD:?}" "${RUNNER_PASSWORD:?}" "${READER_PASSWORD:?}" "${RELAYER_PASSWORD:?}"
 
   local dir file
   dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/scripts"
@@ -21,6 +21,7 @@ bootstrap() (
   psql \
     -v sampler_password="$SAMPLER_PASSWORD" \
     -v runner_password="$RUNNER_PASSWORD" \
+    -v reader_password="$READER_PASSWORD" \
     -v relayer_password="$RELAYER_PASSWORD" \
     "${cluster[@]}"
 

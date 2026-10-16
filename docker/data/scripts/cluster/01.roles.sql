@@ -1,5 +1,5 @@
 SELECT format('CREATE ROLE %I', role)
-FROM (VALUES ('sampler'), ('runner'), ('relayer')) AS roles (role)
+FROM (VALUES ('sampler'), ('runner'), ('reader'), ('relayer')) AS roles (role)
 WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = roles.role)\gexec
 
 ALTER ROLE sampler
@@ -9,6 +9,10 @@ ALTER ROLE sampler
 ALTER ROLE runner
   WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS
   PASSWORD :'runner_password';
+
+ALTER ROLE reader
+  WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS
+  PASSWORD :'reader_password';
 
 ALTER ROLE relayer
   WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION BYPASSRLS

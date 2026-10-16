@@ -6,6 +6,7 @@ const env = z
   .object({
     POSTGRES_SAMPLER_URL: z.url(),
     POSTGRES_RUNNER_URL: z.url(),
+    POSTGRES_READER_URL: z.url(),
     POSTGRES_RELAYER_URL: z.url(),
   })
   .parse(Bun.env);
@@ -15,22 +16,25 @@ const connect = (url: string) => postgres(url, { max: 1, onnotice: () => {} });
 const clients = {
   sampler: connect(env.POSTGRES_SAMPLER_URL),
   runner: connect(env.POSTGRES_RUNNER_URL),
+  reader: connect(env.POSTGRES_READER_URL),
   relayer: connect(env.POSTGRES_RELAYER_URL),
 };
 
-const WRITE = ["DELETE", "INSERT", "SELECT", "UPDATE"];
+// runner never receives DELETE by default: a table that needs it gets an explicit grant in its
+// own migration, and the relayer only gets column-level grants from the migration of its table.
+const WRITE = ["INSERT", "SELECT", "UPDATE"];
 const APPEND = ["INSERT", "SELECT"];
 const READ = ["SELECT"];
 const NONE: string[] = [];
 
 const expectedGrants = {
-  platform: { runner: WRITE, relayer: NONE },
-  catalog: { runner: WRITE, relayer: NONE },
-  sales: { runner: WRITE, relayer: NONE },
-  messaging: { runner: WRITE, relayer: ["SELECT", "UPDATE"] },
-  wallet: { runner: APPEND, relayer: NONE },
-  reporting: { runner: READ, relayer: NONE },
-  drizzle: { runner: NONE, relayer: NONE },
+  platform: { runner: WRITE, reader: NONE, relayer: NONE },
+  catalog: { runner: WRITE, reader: NONE, relayer: NONE },
+  sales: { runner: WRITE, reader: NONE, relayer: NONE },
+  messaging: { runner: WRITE, reader: NONE, relayer: NONE },
+  wallet: { runner: APPEND, reader: NONE, relayer: NONE },
+  reporting: { runner: NONE, reader: READ, relayer: NONE },
+  drizzle: { runner: NONE, reader: NONE, relayer: NONE },
 };
 
 const attributes = (bypassrls: boolean) => ({
@@ -43,6 +47,7 @@ const attributes = (bypassrls: boolean) => ({
 });
 
 const expectedRoles = [
+  { rolname: "reader", ...attributes(false) },
   { rolname: "relayer", ...attributes(true) },
   { rolname: "runner", ...attributes(false) },
   { rolname: "sampler", ...attributes(false) },
@@ -95,7 +100,7 @@ check("roles carry only the intended attributes", async () => {
   const rows = await clients.sampler`
     SELECT rolname, rolsuper, rolcreatedb, rolcreaterole, rolreplication, rolbypassrls, rolcanlogin
     FROM pg_roles
-    WHERE rolname IN ('sampler', 'runner', 'relayer')
+    WHERE rolname IN ('sampler', 'runner', 'reader', 'relayer')
     ORDER BY rolname`;
   deepStrictEqual(rows.map((row) => ({ ...row })), expectedRoles);
 });
@@ -109,10 +114,28 @@ check("sampler owns every schema", async () => {
   deepStrictEqual(rows.map((row) => row.name), Object.keys(expectedGrants).sort());
 });
 
-check("runner cannot create objects", async () => {
-  await rejects(clients.runner`CREATE TABLE catalog.intruder (id int)`, INSUFFICIENT_PRIVILEGE);
-  await rejects(clients.runner`CREATE TABLE public.intruder (id int)`, INSUFFICIENT_PRIVILEGE);
-  await rejects(clients.runner`CREATE SCHEMA intruder`, INSUFFICIENT_PRIVILEGE);
+check("application roles cannot create objects", async () => {
+  for (const role of ["runner", "reader"] as const) {
+    await rejects(clients[role]`CREATE TABLE catalog.intruder (id int)`, INSUFFICIENT_PRIVILEGE);
+    await rejects(clients[role]`CREATE TABLE public.intruder (id int)`, INSUFFICIENT_PRIVILEGE);
+    await rejects(clients[role]`CREATE SCHEMA intruder`, INSUFFICIENT_PRIVILEGE);
+  }
+});
+
+check("reader sees only the reporting schema", async () => {
+  const rows = await clients.sampler<{ name: string }[]>`
+    SELECT schema_name AS name
+    FROM information_schema.schemata
+    WHERE has_schema_privilege('reader', schema_name, 'USAGE')
+      AND schema_name IN ('platform', 'catalog', 'sales', 'wallet', 'messaging', 'reporting', 'drizzle')
+    ORDER BY schema_name`;
+  deepStrictEqual(rows.map((row) => row.name), ["reporting"]);
+});
+
+check("runner cannot read the reporting schema", async () => {
+  const [row] = await clients.sampler<{ usage: boolean }[]>`
+    SELECT has_schema_privilege('runner', 'reporting', 'USAGE') AS usage`;
+  strictEqual(row?.usage, false);
 });
 
 for (const [schema, expected] of Object.entries(expectedGrants)) {
@@ -120,6 +143,7 @@ for (const [schema, expected] of Object.entries(expectedGrants)) {
     probe(async (tx) => {
       await tx`CREATE TABLE ${tx(schema)}.probe (id int)`;
       deepStrictEqual(await tablePrivileges(tx, "runner", `${schema}.probe`), expected.runner);
+      deepStrictEqual(await tablePrivileges(tx, "reader", `${schema}.probe`), expected.reader);
       deepStrictEqual(await tablePrivileges(tx, "relayer", `${schema}.probe`), expected.relayer);
     }),
   );
@@ -128,11 +152,12 @@ for (const [schema, expected] of Object.entries(expectedGrants)) {
 check("new functions are not executable by the application roles", () =>
   probe(async (tx) => {
     await tx`CREATE FUNCTION catalog.probe() RETURNS int LANGUAGE sql AS 'SELECT 1'`;
-    const [row] = await tx<{ runner: boolean; relayer: boolean }[]>`
+    const [row] = await tx<{ runner: boolean; reader: boolean; relayer: boolean }[]>`
       SELECT
         has_function_privilege('runner', 'catalog.probe()', 'EXECUTE') AS runner,
+        has_function_privilege('reader', 'catalog.probe()', 'EXECUTE') AS reader,
         has_function_privilege('relayer', 'catalog.probe()', 'EXECUTE') AS relayer`;
-    deepStrictEqual({ ...row }, { runner: false, relayer: false });
+    deepStrictEqual({ ...row }, { runner: false, reader: false, relayer: false });
   }),
 );
 

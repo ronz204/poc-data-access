@@ -9,4 +9,5 @@ export const reporting = pgSchema("reporting").existing();
 
 export const sampler = pgRole("sampler").existing();
 export const runner = pgRole("runner").existing();
+export const reader = pgRole("reader").existing();
 export const relayer = pgRole("relayer").existing();
