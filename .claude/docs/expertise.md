@@ -47,6 +47,12 @@ When the sink is a queue, "delivered" means the queue accepted the job, not that
 
 The key plus a hash of the request identify one logical operation. A unique constraint on the key decides the winner when two identical requests race: the loser fails or waits and then reads the stored response. The hash distinguishes a legitimate retry from key reuse with a different body, which must be rejected.
 
+## Views, materialized views and tenant isolation
+
+A view runs with the privileges of its owner, not of the caller, unless it is created as invoker-rights. When the owner is the migration role, which skips row-level security, a view over tenant tables returns every tenant's rows to anyone who can select from it. A materialized view is worse: it stores the rows, cannot carry policies and has no invoker mode. So reporting protects itself in the definition: the exposed view filters on the tenant setting, and the security-barrier option stops the planner from moving a caller's predicates ahead of that filter, where a leaky function could expose rows. Materialized views stay internal and are read only through such views.
+
+A materialized view is a snapshot: it is only as fresh as its last refresh. `REFRESH MATERIALIZED VIEW CONCURRENTLY` rebuilds it without blocking readers and keeps the old contents if it fails, but it requires a unique index on the view and recomputes everything, which for a shared view means every tenant's rows.
+
 ## Keyset pagination
 
 `OFFSET n` makes the database walk and discard `n` rows, so cost grows with page depth, and rows inserted between page requests shift the window. Keyset filters on the sort key of the last row seen, `WHERE (created_at, id) < (:c, :i)` with a matching index, so cost is flat and pages are stable. The id tiebreaker is required because timestamps are not unique.

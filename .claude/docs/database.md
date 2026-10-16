@@ -15,7 +15,7 @@ Postgres schemas are split by bounded context, not by table type, so the namespa
 | `sales` | `customers`, `orders`, `items` | `customers` has soft delete. `items` snapshots product name and price. |
 | `wallet` | `accounts`, `entries` | `entries` is an immutable ledger. |
 | `messaging` | `events`, `idempotency` | `events` is the outbox, with delivery and retry state (delivered time, attempts, next attempt time, last error, failed time). `idempotency` stores key, request hash and response. |
-| `reporting` | views, materialized views | Read-only projections for the query side. |
+| `reporting` | views, materialized views | Read-only projections for the query side. Exposed as views with a tenant predicate; materialized views are internal storage and are never granted. |
 
 All objects are referenced with their schema. The migration journal lives in its own schema, away from the domain.
 
@@ -24,10 +24,11 @@ All objects are referenced with their schema. The migration journal lives in its
 | Role | Purpose | Used by |
 |---|---|---|
 | `sampler` | Owns every schema and object; creates and migrates. Holds `CREATE` on the database because the migration tool always issues `CREATE SCHEMA IF NOT EXISTS` for its journal schema, and PostgreSQL checks that privilege before checking whether the schema exists. As the table owner it skips row-level security, so it is never used to read or write application data. | Migration tooling only |
-| `runner` | Select, insert and update on platform, catalog, sales and messaging, with delete only on the catalog categories; select and insert on wallet, plus a column-level update on the account balance; select on `reporting`. Subject to row-level security. | Application reads and writes |
+| `runner` | Select, insert and update on platform, catalog, sales and messaging, with delete only on the catalog categories; select and insert on wallet, plus a column-level update on the account balance. Subject to row-level security. | Application writes and transactional reads |
+| `reader` | Select on the `reporting` views only: no other schema, no materialized view, no writes. Subject to row-level security. | Application read side (reports) |
 | `relayer` | Reads outbox events and updates only their delivery columns, through a column-level grant; nothing else in messaging. Created with `BYPASSRLS` because it claims events across all tenants. | Outbox worker |
 
-The split prevents the application from altering schema, rewriting history (audit, ledger) or escaping tenant isolation. Privileges are granted as default privileges of `sampler` per schema, so every table a migration creates is covered automatically. The defaults give `runner` select, insert and update and never delete; a table that needs more (hard delete on the catalog categories, the balance update on `wallet.accounts`) or less (outbox events) gets an explicit grant or revoke in its own migration. Tables that must not change once written are also covered only by select and insert policies, so even where an update privilege exists no row can be updated or deleted. Functions are not executable by `PUBLIC` by default, so a function used by policies needs an explicit execute grant. A table owner skips row-level security, and tables deliberately do not use `FORCE ROW LEVEL SECURITY`: the only role that owns objects is the migration role, which never operates on application data, so forcing would add nothing. The guarantee rests on the application connecting only as `runner`, the one role the policies filter, so the isolation test must connect as it.
+The split prevents the application from altering schema, rewriting history (audit, ledger) or escaping tenant isolation. Privileges are granted as default privileges of `sampler` per schema, so every table a migration creates is covered automatically. The defaults give `runner` select, insert and update and never delete; a table that needs more (hard delete on the catalog categories, the balance update on `wallet.accounts`) or less (outbox events) gets an explicit grant or revoke in its own migration. Tables that must not change once written are also covered only by select and insert policies, so even where an update privilege exists no row can be updated or deleted. Functions are not executable by `PUBLIC` by default, so a function used by policies needs an explicit execute grant. A table owner skips row-level security, and tables deliberately do not use `FORCE ROW LEVEL SECURITY`: the only role that owns objects is the migration role, which never operates on application data, so forcing would add nothing. The guarantee rests on the application connecting only as `runner` or `reader`, the roles the policies filter, so the isolation tests must connect as them. Reporting objects cannot rely on policies, because a view runs with its owner's rights and a materialized view has no policies, so each exposed view carries its own tenant predicate.
 
 Tenant isolation: every transaction sets `app.tenant`, `app.actor` and `app.origin` locally, and each tenant-scoped table has a policy comparing its `tenant_id` to `current_setting('app.tenant')` (an empty setting reads as `NULL`, so it never matches). Policies are declared next to the table definition and generated into migrations with it.
 
@@ -51,6 +52,7 @@ Columns, types, keys and foreign keys are modeled in `drizzle/DIAGRAM.md`; this 
 - One idempotency key maps to at most one stored outcome per tenant (unique constraint).
 - Uniqueness on soft-deletable tables applies only to live rows (partial unique index on `deleted_at IS NULL`), so a deleted value can be reused.
 - Order items keep the name and price seen at purchase time, independent of later product changes.
+- Every reporting object the application reads is a view with a tenant predicate and the security-barrier option; materialized views are never granted to an application role.
 - A tenant has at most one pending invitation per email (partial unique index on `status = 'pending'`), and an invitation never grants the owner role.
 - Invitation tokens are stored only as a hash, so a database read cannot be replayed to accept an invitation.
 
