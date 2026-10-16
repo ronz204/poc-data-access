@@ -1,8 +1,8 @@
-import { env } from "@env";
 import type { SlapContext } from "@dal/dal.contexter";
 import { type Executor, Transactor } from "@dal/dal.transactor";
-import { type Module, token } from "dockdi";
 import { drizzle } from "drizzle-orm/postgres-js";
+import { type Module, token } from "dockdi";
+import { env } from "@env";
 
 export class DataDockey {
 	static readonly Slap = token<Executor>("Slap");

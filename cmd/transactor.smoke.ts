@@ -1,9 +1,9 @@
-import { TenantId, UserId } from "@core/shared-kernel";
-import { PersistenceError, TransactionScopeError } from "@dal/dal.exceptions";
-import { SlapContext } from "@dal/dal.contexter";
 import type { Executor } from "@dal/dal.transactor";
-import { ViolationTranslator } from "@dal/dal.translator";
+import { PersistenceError, TransactionScopeError } from "@dal/dal.exceptions";
 import { tenants } from "@db/models/platform/tenants.model";
+import { ViolationTranslator } from "@dal/dal.translator";
+import { TenantId, UserId } from "@core/shared-kernel";
+import { SlapContext } from "@dal/dal.contexter";
 import { DataDockey } from "@keys/data.dockey";
 import { Container, token } from "dockdi";
 import { eq, sql } from "drizzle-orm";

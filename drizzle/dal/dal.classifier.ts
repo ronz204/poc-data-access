@@ -1,6 +1,6 @@
+import { PersistenceError, type PersistenceErrorKind } from "./dal.exceptions";
 import { DrizzleQueryError } from "drizzle-orm";
 import postgres from "postgres";
-import { PersistenceError, type PersistenceErrorKind } from "./dal.exceptions";
 
 const SQLSTATE_CODES: Readonly<Record<string, PersistenceErrorKind>> = {
 	"23505": "unique",

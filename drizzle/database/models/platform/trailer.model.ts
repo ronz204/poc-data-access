@@ -1,9 +1,9 @@
-import { sql } from "drizzle-orm";
 import { check, index, jsonb, text, uuid } from "drizzle-orm/pg-core";
+import { AuditrailPolicy } from "@db/policies/auditrail.policy";
 import { ColumnsHelper } from "@db/helpers/column.helper";
 import { platform } from "@db/helpers/existing.helper";
-import { AuditrailPolicy } from "@db/policies/auditrail.policy";
 import { tenants } from "./tenants.model";
+import { sql } from "drizzle-orm";
 
 export const trailer = platform.table.withRLS(
 	"trailer",

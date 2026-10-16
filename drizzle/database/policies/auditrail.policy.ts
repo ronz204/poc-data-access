@@ -1,7 +1,7 @@
-import { sql } from "drizzle-orm";
 import { type AnyPgColumn, pgPolicy } from "drizzle-orm/pg-core";
-import { runner } from "@db/helpers/existing.helper";
 import { PoliciesHelper } from "@db/helpers/policies.helper";
+import { runner } from "@db/helpers/existing.helper";
+import { sql } from "drizzle-orm";
 
 export class AuditrailPolicy {
 	static rules(tenantId: AnyPgColumn, actorId: AnyPgColumn, origin: AnyPgColumn) {
