@@ -166,7 +166,7 @@ Slice: stock-inventory.
 
 ## 13 — HTTP surface
 
-Slice: http-surface (planned, not yet specified).
+Slice: http-endpoints (planned, not yet specified).
 
 - [ ] Elysia routes over the use cases
 - [ ] Idempotency header and the simulated tenant and actor context

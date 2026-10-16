@@ -43,9 +43,9 @@ Phases 0 and 1 are done; every other phase is pending. Each phase names the slic
 10. **Row-level security** - policies and isolation tests run as the application role, including the dedicated read paths. Introduced after the problem is visible, not at the start.
 11. **Read models** (sales-reporting) - the read-only `reader` role, reporting views with a tenant predicate and one refreshed materialized view, joins and keyset pagination over about a million seeded rows, compared with offset and live aggregates using query plans.
 12. **Refactor** (stock-inventory) - extract stock into an inventory schema with an expand then contract migration: dual-write, backfill, verification, an authority switch and the final contract, with the existing tests passing at every step.
-13. **HTTP surface (planned)** (http-surface) - Elysia routes over the use cases: idempotency header, simulated tenant and actor context, zod validation at the boundary, error mapping.
+13. **HTTP endpoints (planned)** (http-endpoints) - Elysia routes over the use cases: idempotency header, simulated tenant and actor context, zod validation at the boundary, error mapping.
 
-Checkout grows by steps. Phase 4 builds the validation, the stock reservation and the order; idempotency, the outbox event, the wallet credit and the audit entry are added by their own phases, and the acceptance criteria that mention them are checked then. Slices built before the audit and row-level-security phases gain their audit calls and policies when those phases land. The slice http-surface has no spec yet.
+Checkout grows by steps. Phase 4 builds the validation, the stock reservation and the order; idempotency, the outbox event, the wallet credit and the audit entry are added by their own phases, and the acceptance criteria that mention them are checked then. Slices built before the audit and row-level-security phases gain their audit calls and policies when those phases land. The slice http-endpoints has no spec yet.
 
 ## Risks
 
