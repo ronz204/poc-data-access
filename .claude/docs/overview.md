@@ -45,6 +45,7 @@ Explicit non-goals:
 |---|---|
 | Tenant | A store. The root of data ownership; every business row belongs to exactly one tenant. |
 | User and membership | A person and their role inside a tenant. Users reach tenant data through memberships. |
+| Invitation | An offer for an email address to join a tenant with a role. Accepting it creates the membership, and the user itself if none exists yet. |
 | Product | A sellable item owned by a tenant. Holds price and stock, supports soft delete, carries a version for optimistic locking. |
 | Category | Grouping of products within a tenant. |
 | Customer | A buyer of a tenant. Supports soft delete. |

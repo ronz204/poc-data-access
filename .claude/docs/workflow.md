@@ -21,9 +21,11 @@ worker (separate loop)
 
 ## Capabilities
 
-### Tenants, users and memberships
+### Tenants, users, memberships and invitations
 
 - A tenant (store) exists with users attached through memberships that carry a role.
+- An owner or admin invites an email address to the tenant with a role of admin or member. The invitation is pending until it is accepted, revoked or past its expiry.
+- Accepting a pending invitation creates the membership, and the user when the email is new, in one unit of work. A second pending invitation for the same email in the same tenant is rejected.
 - Every request acts as one user inside one tenant. Authentication is simulated: the context is supplied, not verified.
 - Whatever the application asks, a request only ever sees and changes its own tenant's rows.
 

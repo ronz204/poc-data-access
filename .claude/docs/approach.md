@@ -15,7 +15,7 @@ The order and reasoning behind building the project. Why the project exists is i
 
 ## Functional scope
 
-- Tenant, user and membership management
+- Tenant, user, membership and invitation management
 - Product catalog with soft delete and stock
 - Customers and orders with checkout that decrements stock atomically
 - Idempotent order creation

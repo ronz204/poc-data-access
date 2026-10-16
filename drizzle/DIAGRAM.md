@@ -6,7 +6,7 @@ Entity-relationship model of the PostgreSQL database, one Mermaid diagram per sc
 
 | Schema | Tables | Purpose |
 |---|---|---|
-| `platform` | `tenants`, `users`, `memberships` | Identity and tenancy. |
+| `platform` | `tenants`, `users`, `memberships`, `invitations` | Identity, tenancy and invitations to join a tenant. |
 | `catalog` | `categories`, `products` | Sellable items and their stock. |
 | `sales` | `customers`, `orders`, `items` | Purchases and their lines. |
 | `wallet` | `accounts`, `entries` | Tenant balance and its immutable ledger. |
@@ -65,6 +65,7 @@ erDiagram
     platform_tenants["platform.tenants"]
     platform_users["platform.users"]
     platform_memberships["platform.memberships"]
+    platform_invitations["platform.invitations"]
     catalog_categories["catalog.categories"]
     catalog_products["catalog.products"]
     sales_customers["sales.customers"]
@@ -78,6 +79,8 @@ erDiagram
 
     platform_tenants ||--o{ platform_memberships : has
     platform_users ||--o{ platform_memberships : joins
+    platform_tenants ||--o{ platform_invitations : issues
+    platform_users ||--o{ platform_invitations : sends
     platform_tenants ||--o{ catalog_categories : owns
     platform_tenants ||--o{ catalog_products : owns
     platform_tenants ||--o{ sales_customers : owns
@@ -116,11 +119,27 @@ erDiagram
         text role "check: owner, admin, member"
         timestamptz created_at
     }
+    invitations {
+        uuid id PK
+        uuid tenant_id FK
+        uuid invited_by FK "to users"
+        text email "invitee, may not be a user yet"
+        text role "check: admin, member"
+        text token_hash UK "hash only, never the token"
+        text status "check: pending, accepted, revoked"
+        timestamptz expires_at
+        timestamptz created_at
+        timestamptz accepted_at "null until accepted"
+    }
     tenants ||--o{ memberships : has
     users ||--o{ memberships : joins
+    tenants ||--o{ invitations : issues
+    users ||--o{ invitations : sends
 ```
 
 `tenants` has no row-level policy. `users` is not tenant-scoped.
+
+`invitations` is tenant-scoped. The invitee is identified by email because the person may not have a user yet; accepting creates the membership (and the user if needed), so there is no foreign key to the invitee. Expiry is derived from `expires_at`, not stored as a status. A partial unique index on `(tenant_id, email) WHERE status = 'pending'` allows one open invitation per email and tenant, and the owner role can only be assigned through membership, never by invitation. Looking an invitation up by token happens before the tenant is known, so that read needs a dedicated path when row-level security lands.
 
 ## catalog
 

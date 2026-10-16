@@ -10,7 +10,7 @@ Postgres schemas are split by bounded context, not by table type, so the namespa
 
 | Schema | Tables | Notes |
 |---|---|---|
-| `platform` | `tenants`, `users`, `memberships` | Identity and tenancy. `tenants` is the root and carries no row-level policy. |
+| `platform` | `tenants`, `users`, `memberships`, `invitations` | Identity and tenancy. `tenants` is the root and carries no row-level policy. `invitations` lets a tenant invite an email address, which may not belong to a user yet. |
 | `catalog` | `products`, `categories` | `products` has soft delete, stock and a version column. Owner of stock. |
 | `sales` | `customers`, `orders`, `items` | `customers` has soft delete. `items` snapshots product name and price. |
 | `wallet` | `accounts`, `entries` | `entries` is an immutable ledger. |
@@ -49,6 +49,8 @@ Columns, types, keys and foreign keys are modeled in `drizzle/DIAGRAM.md`; this 
 - One idempotency key maps to at most one stored outcome per tenant (unique constraint).
 - Uniqueness on soft-deletable tables applies only to live rows (partial unique index on `deleted_at IS NULL`), so a deleted value can be reused.
 - Order items keep the name and price seen at purchase time, independent of later product changes.
+- A tenant has at most one pending invitation per email (partial unique index on `status = 'pending'`), and an invitation never grants the owner role.
+- Invitation tokens are stored only as a hash, so a database read cannot be replayed to accept an invitation.
 
 ## Infrastructure
 
