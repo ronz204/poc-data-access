@@ -47,6 +47,7 @@ catalog.products(
   deleted_at timestamptz null
 )
 unique (tenant_id, name) where deleted_at is null
+unique (tenant_id, id)                 -- target of the composite foreign key from sales.items
 foreign key (tenant_id, category_id) -> catalog.categories (tenant_id, id)
   on delete set null (category_id)
 ```

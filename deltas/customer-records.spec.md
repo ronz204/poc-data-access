@@ -37,6 +37,7 @@ sales.customers(
   deleted_at timestamptz null
 )
 unique (tenant_id, email) where deleted_at is null
+unique (tenant_id, id)                     -- target of the composite foreign key from sales.orders
 ```
 
 There is no version column and no `updated_at`: concurrent edits are last-write-wins, a deliberate contrast with products.

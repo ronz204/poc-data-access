@@ -34,20 +34,26 @@ Non-goals:
 ```
 sales.orders(
   id uuid primary key, tenant_id uuid not null -> platform.tenants,
-  customer_id uuid not null -> sales.customers,
+  customer_id uuid not null,
   status text not null check (status in ('placed')),
   total_cents bigint not null check (total_cents >= 0),
   created_at timestamptz not null
 )
+unique (tenant_id, id)                 -- target of the composite foreign key from items
+foreign key (tenant_id, customer_id) -> sales.customers (tenant_id, id)
 
 sales.items(
-  tenant_id uuid, order_id uuid, product_id uuid -> catalog.products,
+  tenant_id uuid, order_id uuid, product_id uuid,
   name_snapshot text not null,
   price_snapshot_cents bigint not null,
   qty integer not null check (qty > 0),
   primary key (tenant_id, order_id, product_id)
 )
+foreign key (tenant_id, order_id)   -> sales.orders (tenant_id, id)
+foreign key (tenant_id, product_id) -> catalog.products (tenant_id, id)
 ```
+
+The composite foreign keys make a cross-tenant reference impossible in the database: an order can only name a customer of its own tenant, and an item can only belong to an order and a product of its own tenant. They require `unique (tenant_id, id)` on `sales.customers` and `catalog.products`, as their own slices state.
 
 ### Checkout request
 
@@ -141,12 +147,12 @@ Design only: there is no model, migration or code for orders and items. The Tran
 - Replaying a request with the same idempotency key never decrements stock, creates an order, credits the wallet or emits an event a second time.
 - A deleted product or customer cannot be part of a new order.
 - Orders and items are immutable once placed.
+- An order's customer, and an item's order and product, always belong to the same tenant as the row itself, enforced by composite foreign keys.
 - A tenant cannot read or place orders in another tenant (row-level security, roadmap phase 8).
 
 ## Deferred / Open questions
 
 - Which strategy stays the default after the measurements. It starts as the conditional atomic update.
-- The mechanism that guarantees an item's product and order belong to the same tenant (for example composite foreign keys). Decided at implementation.
 - Cancelling and refunding orders.
 - Detecting price changes by letting the client send the expected price.
 - Larger limits on the number of lines.
@@ -167,6 +173,7 @@ Integration tests against a real PostgreSQL, using vitest once it is introduced.
 - Any active member can check out and read orders; another tenant cannot read them.
 - List pages are stable when `created_at` values are equal.
 - The application role cannot update or delete orders or items.
+- An order cannot reference a customer of another tenant, and an item cannot reference an order or a product of another tenant, even through raw SQL.
 
 ---
 
