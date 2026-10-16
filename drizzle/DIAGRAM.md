@@ -94,7 +94,7 @@ erDiagram
     platform_tenants ||--o{ wallet_accounts : owns
     platform_tenants ||--o{ messaging_events : owns
     platform_tenants ||--o{ messaging_idempotency : owns
-    platform_tenants |o--o{ platform_trailer : records
+    platform_tenants ||--o{ platform_trailer : records
     catalog_categories |o--o{ catalog_products : groups
     sales_customers ||--o{ sales_orders : places
     sales_orders ||--|{ sales_items : contains
@@ -142,7 +142,7 @@ erDiagram
     }
     trailer {
         uuid id PK
-        uuid tenant_id FK "nullable: actions with no tenant"
+        uuid tenant_id FK "required: only actions inside a tenant"
         uuid actor_id "nullable, no FK: null on system runs"
         text origin "check: name or name:detail"
         text action "check: entity.verb"
@@ -156,7 +156,7 @@ erDiagram
     users ||--o{ memberships : joins
     tenants ||--o{ invitations : issues
     users ||--o{ invitations : sends
-    tenants |o--o{ trailer : records
+    tenants ||--o{ trailer : records
 ```
 
 `tenants` has no row-level policy. `users` is not tenant-scoped.
@@ -165,7 +165,7 @@ erDiagram
 
 `invitations` is tenant-scoped. The invitee is identified by email because the person may not have a user yet; accepting creates the membership (and the user if needed), so there is no foreign key to the invitee. Expiry is derived from `expires_at`, not stored as a status. A partial unique index on `(tenant_id, email) WHERE status = 'pending'` allows one open invitation per email and tenant, and the owner role can only be assigned through membership, never by invitation. Looking an invitation up by token happens before the tenant is known, so that read needs a dedicated path when row-level security lands.
 
-`trailer` is the audit trail: one row per audited action, written in the same transaction as the change. `tenant_id` is nullable because some actions have no tenant at all (signing up a user); the insert policy requires the row's tenant to equal the transaction's, so creating a tenant enters the new tenant before it writes its own audit entry. `actor_id` is null on system runs, and `origin` always says which process wrote the row. `xact_id` groups the entries of one transaction. Row-level security allows the application role only select (rows of the current tenant) and insert (tenant, actor and origin must match the transaction settings), so rows are never updated or deleted. It is a candidate for monthly partitioning by `occurred_at`; if partitioned, the primary key becomes `(id, occurred_at)` because Postgres requires the partition key in every unique constraint.
+`trailer` is the audit trail: one row per audited action, written in the same transaction as the change. `tenant_id` is required: the trail traces what happens inside tenants, so actions outside any tenant (signing up a user, creating a tenant) are not audited, and the insert policy requires the row's tenant to equal the transaction's. `actor_id` is null on system runs, and `origin` always says which process wrote the row. `xact_id` groups the entries of one transaction. Row-level security allows the application role only select (rows of the current tenant) and insert (tenant, actor and origin must match the transaction settings), so rows are never updated or deleted. It is a candidate for monthly partitioning by `occurred_at`; if partitioned, the primary key becomes `(id, occurred_at)` because Postgres requires the partition key in every unique constraint.
 
 ## catalog
 
