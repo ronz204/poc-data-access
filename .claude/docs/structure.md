@@ -47,7 +47,7 @@ Layers: a domain layer with no persistence knowledge, an application layer of us
 
 ## Infrastructure
 
-Local only: a PostgreSQL container and a Redis container, both started with docker compose. Provisioning scripts for roles, stores, schemas, grants and defaults run once at bootstrap. Redis holds only the BullMQ queue and must persist its data to disk (append-only file), because a job it has accepted exists nowhere else once the outbox marks the event delivered. No caches, CDN or other provisioned resources, and no environments beyond the developer machine. Engine-level details are in the persistence reference.
+Local only: a PostgreSQL container and a Redis container, both started with docker compose. Provisioning scripts for roles, stores, schemas, grants and defaults run once at bootstrap. Redis holds only the BullMQ queue. It persists to disk with an append-only file, because a job it has accepted exists nowhere else once the outbox marks the event delivered. It authenticates users through an ACL (the queue clients, an administrator for manual access and a probe user that can only ping), allows no anonymous access, has the commands that wipe data, dump traffic or reconfigure the server disabled, and runs with a memory ceiling and no eviction, so a full queue refuses writes instead of dropping jobs. No caches, CDN or other provisioned resources, and no environments beyond the developer machine. Engine-level details are in the persistence reference.
 
 ## Cross-cutting patterns
 
@@ -57,7 +57,7 @@ Local only: a PostgreSQL container and a Redis container, both started with dock
 - **Deferred work through the outbox.** Anything that must happen after commit is an event recorded in Postgres, handed by a polling worker to the queue, and processed by a consumer, never inline in the request path. Delivery is at least once, so consumers tolerate duplicates.
 - **Stateless application.** All business state is in PostgreSQL and the only other state is queued jobs in Redis; the processes can be restarted at any time.
 - **Reads are bounded.** Every list is keyset-paginated; there are no unbounded fetches.
-- **Secrets stay out of code and logs.** Credentials come from environment files that are not committed; audit entries record that a secret changed, never its value.
+- **Secrets stay out of code and logs.** Credentials come from secrets files, kept in a `secrets` folder per docker service and never committed (only their samples are); audit entries record that a secret changed, never its value.
 - **Error handling.** Database errors are translated into domain-level errors at the data-access layer so callers do not depend on driver codes.
 
 ## Open architecture decisions

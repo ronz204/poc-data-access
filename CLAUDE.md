@@ -29,7 +29,8 @@ The code is currently an empty scaffold: the directories and path aliases exist,
 | `drizzle/database/` | Drizzle schema definitions per Postgres schema, policies, helpers |
 | `drizzle/migrations/` | Generated and hand-written migrations |
 | `docker/data/` | PostgreSQL compose file and bootstrap scripts for roles, stores, schemas, grants |
-| `docker/queue/` | Redis compose file for the BullMQ queue, with append-only persistence |
+| `docker/bull/` | Redis compose file, server configuration and ACL users for the BullMQ queue |
+| `docker/*/secrets/` | Secrets of each docker service; real files are git-ignored, only the `*.sample` files are committed |
 | `cmd/` | Entry-point scripts that simulate requests |
 
 Import aliases for these folders are defined in `tsconfig.json`.
@@ -39,7 +40,7 @@ Import aliases for these folders are defined in `tsconfig.json`.
 | Task | Command |
 |---|---|
 | Install dependencies | `bun install` |
-| Start PostgreSQL and Redis | `bun run db:up` (copy `docker/data/.env.sample` to `docker/data/.env` and the root `.env.sample` to `.env` first; `docker/queue/.env.sample` is optional, Redis falls back to its sample password) |
+| Start PostgreSQL and Redis | `bun run db:up`. First copy each sample to its real name: `docker/data/secrets/.env.sample` to `.env`, `docker/bull/secrets/users.acl.sample` to `users.acl` (replace every `change-me-*` with a real password) and the root `.env.sample` to `.env`, with the `bull` password also in `BULL_REDIS_URL` |
 | Stop both | `bun run db:down` |
 | Recreate the databases from scratch | `bun run db:reset`; the bootstrap scripts only run on an empty volume, so a change to roles or grants needs it |
 | Verify roles, schemas and grants | `bun run db:check` |
@@ -57,7 +58,7 @@ The full policy lives in `.claude/settings.json`. Reading environment and secret
 - Code, identifiers and runtime messages are in English; scoped rules live in `.claude/rules/`: layering of bounded contexts, transaction ownership, schema-qualified names, list pagination, input validation, delta editing and scope.
 - Changes to anything in the knowledge base go through the matching skill, not by hand.
 - `ROADMAP.md` at the repo root tracks build progress, one step per phase of the approach.
-- `approach.md` and `auditrail.md` at the repo root are personal scratch notes, not part of the knowledge base. `auditrail.md` describes an earlier implementation that no longer exists.
+- Secrets never enter git: each docker service keeps them in its own `secrets/` folder, and only samples are versioned.
 
 ---
 

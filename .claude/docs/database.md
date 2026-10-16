@@ -59,7 +59,7 @@ Columns, types, keys and foreign keys are modeled in `drizzle/DIAGRAM.md`; this 
 
 ## Infrastructure
 
-Single PostgreSQL instance in a local container with a single database; tests run against it too. Bootstrap scripts run once, idempotently, in two stages: cluster-level roles first (created or re-synced with their passwords), then the store: connection and creation rights, schemas, schema usage with default table privileges, and revocation of permissive defaults. The migration journal lives in the `drizzle` schema. Credentials come from an uncommitted environment file. No replication or backup.
+Single PostgreSQL instance in a local container with a single database; tests run against it too. Bootstrap scripts run once, idempotently, in two stages: cluster-level roles first (created or re-synced with their passwords), then the store: connection and creation rights, schemas, schema usage with default table privileges, and revocation of permissive defaults. The migration journal lives in the `drizzle` schema. Credentials come from an uncommitted secrets file kept beside the bootstrap scripts. No replication or backup.
 
 ## Access patterns
 
