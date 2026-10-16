@@ -2,14 +2,11 @@ import { PoliciesHelper } from "@db/helpers/policies.helper";
 import type { Container, Token } from "dockdi";
 import { sql } from "drizzle-orm";
 import type { PgAsyncDatabase } from "drizzle-orm/pg-core";
-import type { PostgresJsDatabase, PostgresJsQueryResultHKT } from "drizzle-orm/postgres-js";
-import type { Sql } from "postgres";
+import type { PostgresJsQueryResultHKT } from "drizzle-orm/postgres-js";
 import { ErrorClassifier } from "./dal.classifier";
 import type { SlapContext } from "./dal.contexter";
 
 export type Executor = PgAsyncDatabase<PostgresJsQueryResultHKT>;
-export type Database = PostgresJsDatabase & { readonly $client: Sql };
-
 export interface TransactorTokens {
 	readonly Slap: Token<Executor>;
 	readonly Context: Token<SlapContext>;
