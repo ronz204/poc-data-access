@@ -12,14 +12,14 @@ Build progress of poc-persists-data, one step per phase of the approach; not a c
 |---|---|---|---|
 | 0 | [Base infrastructure](#0--base-infrastructure) | ✅ Done | 4/4 — 100% |
 | 1 | [Base migrations and Transactor](#1--base-migrations-and-transactor) | ✅ Done | 5/5 — 100% |
-| 2 | [Identity](#2--identity) | 🔄 In progress | 2/8 — 25% |
+| 2 | [Identity](#2--identity) | 🔄 In progress | 1/7 — 14% |
 | 3 | [Catalog and customers](#3--catalog-and-customers) | 🔲 Not started | 0/5 — 0% |
 | 4 | [Basic checkout](#4--basic-checkout) | 🔲 Not started | 0/5 — 0% |
 | 5 | [Concurrency](#5--concurrency) | 🔲 Not started | 0/6 — 0% |
 | 6 | [Idempotency](#6--idempotency) | 🔲 Not started | 0/4 — 0% |
 | 7 | [Outbox](#7--outbox) | 🔄 In progress | 1/9 — 11% |
 | 8 | [Wallet](#8--wallet) | 🔲 Not started | 0/7 — 0% |
-| 9 | [Audit trail](#9--audit-trail) | 🔲 Not started | 0/4 — 0% |
+| 9 | [Audit trail](#9--audit-trail) | 🔄 In progress | 1/5 — 20% |
 | 10 | [Row-level security](#10--row-level-security) | 🔲 Not started | 0/5 — 0% |
 | 11 | [Read models](#11--read-models) | 🔄 In progress | 1/6 — 17% |
 | 12 | [Refactor](#12--refactor) | 🔲 Not started | 0/5 — 0% |
@@ -53,7 +53,6 @@ The Transactor comes first: row-level security, audit and the outbox all depend 
 Slices: tenant-onboarding, member-invitation. Everything after this needs a tenant and an actor.
 
 - [x] Memberships migration: own id, `removed_at`, unique active membership per tenant and user
-- [x] Transactor operation that enters a tenant, used only by create tenant
 - [ ] Email value object and sign-up
 - [ ] Create tenant: tenant and owner membership atomically
 - [ ] Member management: change role, remove, leave, with last-owner protection under the tenant lock
@@ -129,10 +128,11 @@ Slice: wallet-ledger.
 
 Slice: audit-recording. The trail table already exists, created by the second platform migration.
 
+- [x] Trail limited to actions inside a tenant: tenant required, actor optional
 - [ ] Recorder driven by the Transactor context, with per-action allowlists
 - [ ] Business actions of every earlier slice audited in the same transaction, with secret values excluded
 - [ ] Trail read query for owner and admin
-- [ ] Tests: rollback removes the entry, the application role cannot update or delete entries, null-tenant entries are not readable by a tenant
+- [ ] Tests: rollback removes the entry, the application role cannot update or delete entries, an entry without a tenant is rejected, signing up and creating a tenant write no entry
 
 ## 10 — Row-level security
 
