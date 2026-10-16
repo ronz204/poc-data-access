@@ -6,13 +6,13 @@ Build progress of poc-persists-data, one step per phase of the approach; not a c
 
 ## Overview
 
-**Overall progress: 12 / 78 tasks — 15%**
+**Overall progress: 13 / 78 tasks — 17%**
 
 | # | Step | Status | Progress |
 |---|---|---|---|
 | 0 | [Base infrastructure](#0--base-infrastructure) | ✅ Done | 4/4 — 100% |
 | 1 | [Base migrations and Transactor](#1--base-migrations-and-transactor) | ✅ Done | 5/5 — 100% |
-| 2 | [Identity](#2--identity) | 🔄 In progress | 1/8 — 13% |
+| 2 | [Identity](#2--identity) | 🔄 In progress | 2/8 — 25% |
 | 3 | [Catalog and customers](#3--catalog-and-customers) | 🔲 Not started | 0/5 — 0% |
 | 4 | [Basic checkout](#4--basic-checkout) | 🔲 Not started | 0/5 — 0% |
 | 5 | [Concurrency](#5--concurrency) | 🔲 Not started | 0/6 — 0% |
@@ -53,7 +53,7 @@ The Transactor comes first: row-level security, audit and the outbox all depend 
 Slices: tenant-onboarding, member-invitation. Everything after this needs a tenant and an actor.
 
 - [x] Memberships migration: own id, `removed_at`, unique active membership per tenant and user
-- [ ] Transactor operation that enters a tenant, used only by create tenant
+- [x] Transactor operation that enters a tenant, used only by create tenant
 - [ ] Email value object and sign-up
 - [ ] Create tenant: tenant and owner membership atomically
 - [ ] Member management: change role, remove, leave, with last-owner protection under the tenant lock

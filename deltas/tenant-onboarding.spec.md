@@ -79,7 +79,7 @@ A removed membership is kept; a user who returns gets a new row.
 
 ### Current state
 
-The three tables exist. `memberships` already has the shape above (its own `id`, `removed_at` and the partial unique index on active memberships), created by the second platform migration. Domain, use cases and repositories for this slice are not implemented, the tables have no row-level policy yet, and the Transactor operation that enters a tenant does not exist yet.
+The three tables exist. `memberships` already has the shape above (its own `id`, `removed_at` and the partial unique index on active memberships), created by the second platform migration. Domain, use cases and repositories for this slice are not implemented, and the tables have no row-level policy yet. The Transactor operation that enters a tenant exists and is covered by the Transactor's real-database check.
 
 ## Invariants
 
