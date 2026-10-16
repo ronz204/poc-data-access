@@ -75,6 +75,8 @@ When two identical requests arrive at once, the second insert waits on the first
 
 The work behind a key never runs twice.
 
+The wait is bounded by a lock timeout. (Assumed default: a few seconds.) When it expires, the second request fails with a retryable in-progress error and runs nothing; the client retries, and by then the first outcome is usually stored. Without this bound a stuck first request would hold every duplicate, and its database connection, indefinitely.
+
 ### Failures
 
 Only successes are stored. A failed request rolls back everything, including the key record, so retrying with the same key runs again and returns the current result or error. A failed outcome is never replayed.
@@ -98,7 +100,7 @@ Design only: there is no model, migration or code for the idempotency table or w
 ## Invariants
 
 - At most one record exists per tenant and key.
-- A committed record always has a response, and is never modified afterward. The mechanism that enforces the second part (a policy, a trigger, or convention plus tests) is left to implementation.
+- A committed record always has a response, and is never modified afterward. The row-level update policy only matches rows whose response is still null and only allows setting a non-null response, and there is no delete policy; a committed row therefore matches no update policy.
 - The work behind a key runs at most once.
 - The stored response is returned verbatim on every replay.
 - The same key with a different request hash never runs the work and never returns the stored response.
@@ -111,7 +113,6 @@ Design only: there is no model, migration or code for the idempotency table or w
 - Retention: expiry (for example after 24 hours), cleanup, and key reuse afterward.
 - Whether deterministic failures should ever be replayed.
 - Whether keys should be scoped per actor instead of per tenant.
-- How committed records are made immutable.
 - Storing the original request for debugging.
 
 ## Acceptance criteria
@@ -124,6 +125,7 @@ Integration tests against a real PostgreSQL, using vitest once it is introduced:
 - Checkout lines in a different order produce the same hash and count as the same request.
 - 20 identical concurrent requests (`Promise.all`) with the same key produce exactly one execution, and all receive the same response.
 - If the first of two concurrent requests rolls back, the second runs the work.
+- If the first request is still running when the lock timeout expires, the second fails with a retryable in-progress error and runs nothing.
 - A failed request leaves no record, and the same key can be retried.
 - An invalid key is rejected before any database work.
 - The same key in two tenants is independent.

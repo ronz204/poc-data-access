@@ -58,7 +58,8 @@ The composite foreign keys make a cross-tenant reference impossible in the datab
 ### Checkout request
 
 ```
-Idempotency-Key: <key>            required; semantics in the idempotency-keys slice
+idempotencyKey                    required; semantics in the idempotency-keys slice
+                                  (carried by the Idempotency-Key header once the HTTP surface exists)
 customerId, lines: [{ productId, qty }]
 ```
 
@@ -93,18 +94,19 @@ The contract is identical for all three:
 - All-or-nothing across the request's lines.
 - Every successful decrement increments the product's version and sets `updated_at`, as the product-catalog slice defines.
 - Lines are processed ordered by product id, so concurrent checkouts take locks in the same order and cannot deadlock each other.
+- The reservation statement itself requires the product to be live (not deleted), in all three strategies, so a product deleted after the validation step cannot be sold.
 - Correctness does not depend on a serializable isolation level; the default `READ COMMITTED` is enough.
 
 ### Orchestration
 
-Everything below runs in one transaction under the Transactor, in a tenant context:
+Everything below runs in one transaction under the Transactor, in a tenant context. Before step 1 the actor is admitted through the admission use case of tenant-onboarding, so an idempotency key is only ever resolved for an actor allowed to check out.
 
 1. Resolve the idempotency key.
-2. Validate the customer and the products.
+2. Validate the customer and the products. The customer row is read with a share lock, so a concurrent delete cannot commit between this check and the order insert.
 3. Reserve stock, lines ordered by product id.
 4. Insert the order and its items.
 5. Record the `OrderPlaced` event in the outbox.
-6. Credit the tenant's wallet by the order total; the ledger entry refers to the order by type `order` and the order's id, with no foreign key.
+6. Credit the tenant's wallet by the order total when it is greater than zero; the ledger entry refers to the order by type `order` and the order's id, with no foreign key. A zero-total order writes no entry, because ledger entries are nonzero.
 7. Record the audit entry `order.placed`.
 8. Store the response against the idempotency key.
 9. Commit.
@@ -137,13 +139,19 @@ A failure at any step rolls back every previous step: stock, order, items, event
 
 Design only: there is no model, migration or code for orders and items. The Transactor exists. Checkout depends on the catalog, idempotency, outbox, wallet and audit slices being implemented.
 
+## Context
+
+Every checkout of a tenant credits the same wallet account row, so concurrent checkouts of different products still queue on that row until each one commits, while the stock strategies only contend per product. When comparing the three strategies, measure with and without the credit step; otherwise the account row hides the difference. Moving the credit out of the transaction, for example to a consumer of `OrderPlaced`, would remove that hot row at the cost of the all-or-nothing guarantee, and the unique origin on the ledger would still keep it to one credit per order. That alternative is a stretch goal, not part of this contract.
+
+Locks are always taken in the same order: product rows by id, then the wallet account row. A wallet movement only takes the account row, so checkouts and movements cannot deadlock each other.
+
 ## Invariants
 
 - Stock is never negative, under any concurrency level and with any of the three strategies.
 - A checkout is all-or-nothing: it either places the order, decrements all stock, records the event, credits the wallet, writes the audit entry and stores the idempotency outcome, or it does none of them.
 - An order has at least one item, and each product appears at most once in it.
 - Items keep the name and price seen at purchase, independent of later catalog changes.
-- The order total equals the sum of its items, and the wallet credit equals the order total, exactly once per order.
+- The order total equals the sum of its items. When the total is positive, exactly one wallet entry credits it; a zero total writes none.
 - Replaying a request with the same idempotency key never decrements stock, creates an order, credits the wallet or emits an event a second time.
 - A deleted product or customer cannot be part of a new order.
 - Orders and items are immutable once placed.
@@ -169,7 +177,8 @@ Integration tests against a real PostgreSQL, using vitest once it is introduced.
 - Items keep their snapshot after the product's price or name changes.
 - Forcing a failure at any step, including after the wallet credit, leaves no order, stock change, event, credit, audit entry or idempotency record.
 - Replaying the request with the same key returns the stored response with no second effect (the details are covered in the idempotency-keys slice).
-- The order total equals the sum of its items, and the wallet credit equals the total.
+- The order total equals the sum of its items, and the wallet credit equals the total; an order with a zero total creates no wallet entry.
+- A product deleted between the validation and the reservation is not sold, with each strategy; a customer deleted at the same moment either blocks the checkout until it commits or makes it fail, never producing an order for a deleted customer.
 - Any active member can check out and read orders; another tenant cannot read them.
 - List pages are stable when `created_at` values are equal.
 - The application role cannot update or delete orders or items.

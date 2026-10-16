@@ -69,7 +69,7 @@ Generated server-side with high entropy and returned in clear only by Invite. On
 
 ### Audited actions
 
-`invitation.created`, `invitation.revoked`, `invitation.accepted`, plus `user.signed_up` and `membership.created` when acceptance creates them. Invite and Revoke run in the tenant's context; Accept runs in a system context scoped to the tenant. Entries carry the email and role, never the token or its hash.
+`invitation.created`, `invitation.revoked`, `invitation.accepted`, plus `user.signed_up` and `membership.created` when acceptance creates them. Invite and Revoke run in the tenant's context; Accept runs in a system context scoped to the tenant. Entries carry the email and role, never the token or its hash. Accept has no actor, so its entries record the accepting user's id and email in the metadata; otherwise the trail could not say who joined.
 
 ### Current state
 

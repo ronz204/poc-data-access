@@ -62,7 +62,7 @@ One open transaction per batch:
 3. When Redis acknowledges the job, set `delivered_at`.
 4. Commit.
 
-If the worker dies before committing, the locks are released and another worker claims the same events again. The queue ignores a second job with the same id while the first still exists, and consumers tolerate the duplicates that remain. The transaction stays open while jobs are enqueued; that is an accepted trade-off, so batches are kept small.
+If the worker dies before committing, the locks are released and another worker claims the same events again. The queue ignores a second job with the same id while the first still exists, and consumers tolerate the duplicates that remain. The transaction stays open while jobs are enqueued; that is an accepted trade-off, so batches are kept small. Each enqueue is bounded by a timeout (assumed default: a few seconds), and a timeout counts as a failed enqueue; the claim transaction also has its own timeout. Otherwise an unresponsive Redis would hold the row locks and the database connection indefinitely.
 
 ### Retry policy
 
@@ -84,6 +84,12 @@ A separate process takes jobs from the queue and handles them by event type. The
 
 - No ordering is guaranteed across events or workers. Events are claimed oldest first on a best-effort basis, and consumers must not depend on order.
 - Delivered events are kept without expiry.
+
+### Privileges
+
+- `runner` inserts events inside business transactions and needs no update or delete on them.
+- `relayer` reads events and updates only the delivery columns (`delivered_at`, `attempts`, `next_attempt_at`, `last_error`, `failed_at`), through a column-level grant on `messaging.events`. It has no access to the other messaging tables.
+- These grants replace the schema-wide defaults that today give `relayer` select and update on every messaging table and `runner` update and delete on events.
 
 ### Audit and logging
 
@@ -108,7 +114,6 @@ Design only: there is no model, migration or code for events, and Redis is not y
 ## Deferred / Open questions
 
 - Purge or archive of delivered and failed events.
-- The grants are broader than needed: `relayer` can update `messaging.idempotency`, and `runner` can update and delete events. Whether to restrict them.
 - Redis persistence and high-availability configuration.
 - Whether per-aggregate ordering is ever needed.
 - A replay tool for failed events.
@@ -126,6 +131,8 @@ Integration tests against a real PostgreSQL and Redis, using vitest once it is i
 - An enqueue failure (Redis unavailable) increments `attempts`, sets `next_attempt_at` with backoff and stores `last_error`, while the other events in the batch proceed.
 - After the maximum attempts the event is marked failed and never claimed again; a delivered event is never claimed again.
 - The claim respects `next_attempt_at` and the batch size.
+- An enqueue that hangs past its timeout counts as a failed enqueue, and the worker releases its locks.
+- The relayer cannot update `messaging.idempotency` or any column of an event other than the delivery columns; the application role cannot update or delete events.
 - A graceful shutdown finishes the current batch.
 - The consumer processes each event id once and handles a duplicate delivery without a second effect.
 - The relayer sees events of every tenant, while the application role sees only its own tenant's (row-level security, roadmap phase 8).

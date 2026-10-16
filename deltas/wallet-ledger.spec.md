@@ -106,6 +106,10 @@ Owner and admin can read; a member cannot read the wallet.
 
 Design only: there is no model, migration or code for the wallet yet.
 
+## Context
+
+The account is one row per tenant, and every sale credit updates it inside the checkout transaction. All checkouts of a tenant therefore queue on that row until each one commits. This is the price of keeping the credit atomic with the sale, and it is deliberate for now. The mitigation, if the contention matters, is to credit from a consumer of the `OrderPlaced` event instead: the unique origin on the ledger keeps it to one credit per order, but the sale and the credit stop being all-or-nothing. That is a stretch goal, not part of this contract.
+
 ## Invariants
 
 - The balance is never negative.
