@@ -57,7 +57,7 @@ Emails are normalized in the domain (trimmed and lowercased) by a value object b
 
 A unit of work that starts in a platform context has no tenant, yet the owner membership and the audit entry of a new tenant are tenant-scoped rows. So the Transactor offers one operation, entering a tenant, which re-applies the tenant setting for the rest of the transaction. Create tenant uses it once, for the tenant it has just inserted, and no other use case may. With it the normal row-level policies apply without special cases, and `tenant.created` is written with the new tenant, so it appears in that tenant's own trail.
 
-### Memberships table (target shape)
+### Memberships table
 
 ```
 platform.memberships(
@@ -79,7 +79,7 @@ A removed membership is kept; a user who returns gets a new row.
 
 ### Current state
 
-The three tables exist from the platform base migration with a composite primary key `(tenant_id, user_id)` on memberships and no `id` or `removed_at` column. Domain, use cases and repositories for this slice are not implemented. The memberships shape above is the target and needs a migration.
+The three tables exist. `memberships` already has the shape above (its own `id`, `removed_at` and the partial unique index on active memberships), created by the second platform migration. Domain, use cases and repositories for this slice are not implemented, the tables have no row-level policy yet, and the Transactor operation that enters a tenant does not exist yet.
 
 ## Invariants
 

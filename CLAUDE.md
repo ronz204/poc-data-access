@@ -29,6 +29,7 @@ The code is currently an empty scaffold: the directories and path aliases exist,
 | `drizzle/database/` | Drizzle schema definitions per Postgres schema, policies, helpers |
 | `drizzle/migrations/` | Generated and hand-written migrations |
 | `docker/data/` | PostgreSQL compose file and bootstrap scripts for roles, stores, schemas, grants |
+| `docker/queue/` | Redis compose file for the BullMQ queue, with append-only persistence |
 | `cmd/` | Entry-point scripts that simulate requests |
 
 Import aliases for these folders are defined in `tsconfig.json`.
@@ -38,12 +39,14 @@ Import aliases for these folders are defined in `tsconfig.json`.
 | Task | Command |
 |---|---|
 | Install dependencies | `bun install` |
-| Start PostgreSQL | `bun run db:up` (copy `docker/data/.env.sample` to `docker/data/.env` and the root `.env.sample` to `.env` first) |
-| Stop PostgreSQL | `bun run db:down` |
-| Recreate the database from scratch | `bun run db:reset`; the bootstrap scripts only run on an empty volume |
+| Start PostgreSQL and Redis | `bun run db:up` (copy `docker/data/.env.sample` to `docker/data/.env` and the root `.env.sample` to `.env` first; `docker/queue/.env.sample` is optional, Redis falls back to its sample password) |
+| Stop both | `bun run db:down` |
+| Recreate the databases from scratch | `bun run db:reset`; the bootstrap scripts only run on an empty volume, so a change to roles or grants needs it |
 | Verify roles, schemas and grants | `bun run db:check` |
+| Apply migrations | `bunx drizzle-kit migrate` (needs `POSTGRES_SAMPLER_URL`) |
+| Generate a migration from the models | `bunx drizzle-kit generate --name <name>` |
 
-There is no test runner, linter, build or CI yet. Migrations are meant to run through drizzle-kit once its config exists.
+There is no test runner, linter, build or CI yet, and `package.json` defines no scripts for migrations.
 
 ## Permissions
 

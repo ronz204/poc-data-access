@@ -87,7 +87,7 @@ The seeded dataset has about a million orders, generated with the seeding tool. 
 
 ### Current state
 
-Design only: there are no views, no `reader` role, no migration and no code. The slice depends on orders, items, customers and products existing, and on the `reader` role being added to the bootstrap.
+There are no views, migration or code yet. The `reader` role already exists in the bootstrap, with `USAGE` on `reporting`, a default `SELECT` on its tables and its connection setting in the environment sample; `runner` no longer reads `reporting`. The slice depends on orders, items, customers and products existing.
 
 ## Invariants
 

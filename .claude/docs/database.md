@@ -1,6 +1,6 @@
 # Database
 
-The PostgreSQL design for the project: schemas, roles, data model, invariants and access conventions. The schema is the target design; only the platform base migration has been applied so far.
+The PostgreSQL design for the project: schemas, roles, data model, invariants and access conventions. The schema is the target design; so far only the `platform` tables exist (identity, memberships with soft delete, invitations and the audit trail), created by the first two migrations.
 
 ---
 

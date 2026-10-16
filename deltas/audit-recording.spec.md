@@ -88,7 +88,7 @@ There is no update or delete policy. The schema's default grants include update 
 
 ### Current state
 
-The table, its checks, index and policies exist from the platform base migration. The Recorder, allowlists and read query are not implemented.
+The table, its checks, index, row-level security and policies exist, created by the second platform migration (the base migration did not include it). The Recorder, allowlists and read query are not implemented.
 
 ## Invariants
 

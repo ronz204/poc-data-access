@@ -97,7 +97,7 @@ Delivery is not audited per event: it is operational, not a business action. The
 
 ### Current state
 
-Design only: there is no model, migration or code for events, and Redis is not yet part of the compose file. The `relayer` role and its connection setting already exist.
+There is no model, migration or code for events. Redis is already part of the compose file, with append-only persistence and a password. The `relayer` role and its connection setting already exist; it currently has only `USAGE` on the schema, and receives its column-level grant from the migration that creates the events table.
 
 ## Invariants
 
