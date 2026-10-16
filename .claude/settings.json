@@ -4,6 +4,9 @@
     "allow": [
       "WebSearch",
       "Skill(update-config)",
+      "Bash(bun install)",
+      "Bash(bun run *)",
+      "Bash(bunx *)",
       "Bash(curl *)",
       "Bash(git log *)",
       "Bash(git status)",
@@ -14,9 +17,6 @@
       "Bash(docker compose *)"
     ],
     "deny": [
-      "Read(**/.env)",
-      "Read(**/.env.*)",
-      "Read(**/secrets/**)",
       "Bash(git push *)",
       "Bash(git pull *)"
     ]
