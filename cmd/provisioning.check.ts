@@ -34,8 +34,11 @@ const expectedGrants = {
   messaging: { runner: WRITE, reader: NONE, relayer: NONE },
   wallet: { runner: APPEND, reader: NONE, relayer: NONE },
   reporting: { runner: NONE, reader: READ, relayer: NONE },
-  drizzle: { runner: NONE, reader: NONE, relayer: NONE },
 };
+
+// The migration journal schema is not provisioned: drizzle-kit creates it on the first migration,
+// owned by sampler, so it only exists after that and is checked separately.
+const JOURNAL = "drizzle";
 
 const attributes = (bypassrls: boolean) => ({
   rolsuper: false,
@@ -105,13 +108,25 @@ check("roles carry only the intended attributes", async () => {
   deepStrictEqual(rows.map((row) => ({ ...row })), expectedRoles);
 });
 
-check("sampler owns every schema", async () => {
+check("sampler owns every provisioned schema", async () => {
   const rows = await clients.sampler<{ name: string }[]>`
     SELECT schema_name AS name
     FROM information_schema.schemata
-    WHERE schema_owner = 'sampler'
+    WHERE schema_owner = 'sampler' AND schema_name <> ${JOURNAL}
     ORDER BY schema_name`;
   deepStrictEqual(rows.map((row) => row.name), Object.keys(expectedGrants).sort());
+});
+
+check("the migration journal, once created, is owned by sampler and closed to the application roles", async () => {
+  const [row] = await clients.sampler<{ owner: string }[]>`
+    SELECT schema_owner AS owner FROM information_schema.schemata WHERE schema_name = ${JOURNAL}`;
+  if (!row) return;
+  strictEqual(row.owner, "sampler");
+  for (const role of ["runner", "reader", "relayer"]) {
+    const [access] = await clients.sampler<{ usage: boolean }[]>`
+      SELECT has_schema_privilege(${role}, ${JOURNAL}, 'USAGE') AS usage`;
+    strictEqual(access?.usage, false, `${role} can use the migration journal`);
+  }
 });
 
 check("application roles cannot create objects", async () => {
