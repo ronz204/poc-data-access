@@ -6,12 +6,12 @@ Build progress of poc-persists-data, one step per phase of the approach; not a c
 
 ## Overview
 
-**Overall progress: 6 / 48 tasks — 13%**
+**Overall progress: 9 / 48 tasks — 19%**
 
 | # | Step | Status | Progress |
 |---|---|---|---|
 | 0 | [Base infrastructure](#0--base-infrastructure) | ✅ Done | 4/4 — 100% |
-| 1 | [Base migrations and Transactor](#1--base-migrations-and-transactor) | 🔄 In progress | 2/5 — 40% |
+| 1 | [Base migrations and Transactor](#1--base-migrations-and-transactor) | ✅ Done | 5/5 — 100% |
 | 2 | [Repositories and product CRUD](#2--repositories-and-product-crud) | 🔲 Not started | 0/4 — 0% |
 | 3 | [Basic checkout](#3--basic-checkout) | 🔲 Not started | 0/4 — 0% |
 | 4 | [Concurrency](#4--concurrency) | 🔲 Not started | 0/5 — 0% |
@@ -42,9 +42,9 @@ The Transactor comes first: row-level security, audit and the outbox all depend 
 
 - [x] drizzle-kit config and migration workflow
 - [x] First migrations: base tables for tenants, users, memberships and invitations
-- [ ] Drizzle client and Transactor registered on the DI container
-- [ ] Tenant, actor and request id set per transaction, scoped to that transaction only
-- [ ] Real-database test that the context does not leak between transactions
+- [x] Drizzle client and Transactor registered on the DI container
+- [x] Tenant, actor and origin set per transaction, scoped to that transaction only
+- [x] Real-database test that the context does not leak between transactions
 
 ## 2 — Repositories and product CRUD
 
