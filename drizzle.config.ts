@@ -9,7 +9,7 @@ export default defineConfig({
 	dialect: "postgresql",
 	out: "./drizzle/migrations/",
 	schema: "./drizzle/database/models/**/*.model.ts",
-	schemaFilter: ["platform", "catalog", "sales", "wallet", "messaging", "audit", "reporting"],
+	schemaFilter: ["platform", "catalog", "sales", "wallet", "messaging", "reporting"],
 	migrations: { schema: "drizzle", table: "migrations" },
 	dbCredentials: { url: POSTGRES_SAMPLER_URL },
 });

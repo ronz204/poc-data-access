@@ -5,7 +5,6 @@ export const catalog = pgSchema("catalog").existing();
 export const sales = pgSchema("sales").existing();
 export const wallet = pgSchema("wallet").existing();
 export const messaging = pgSchema("messaging").existing();
-export const audit = pgSchema("audit").existing();
 export const reporting = pgSchema("reporting").existing();
 
 export const sampler = pgRole("sampler").existing();

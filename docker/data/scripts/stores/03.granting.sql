@@ -1,4 +1,4 @@
-GRANT USAGE ON SCHEMA platform, catalog, sales, wallet, messaging, audit, reporting TO runner;
+GRANT USAGE ON SCHEMA platform, catalog, sales, wallet, messaging, reporting TO runner;
 GRANT USAGE ON SCHEMA messaging TO relayer;
 
 ALTER DEFAULT PRIVILEGES FOR ROLE sampler
@@ -6,7 +6,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sampler
   GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO runner;
 
 ALTER DEFAULT PRIVILEGES FOR ROLE sampler
-  IN SCHEMA wallet, audit
+  IN SCHEMA wallet
   GRANT SELECT, INSERT ON TABLES TO runner;
 
 ALTER DEFAULT PRIVILEGES FOR ROLE sampler

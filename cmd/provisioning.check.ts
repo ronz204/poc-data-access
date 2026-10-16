@@ -29,7 +29,6 @@ const expectedGrants = {
   sales: { runner: WRITE, relayer: NONE },
   messaging: { runner: WRITE, relayer: ["SELECT", "UPDATE"] },
   wallet: { runner: APPEND, relayer: NONE },
-  audit: { runner: APPEND, relayer: NONE },
   reporting: { runner: READ, relayer: NONE },
   drizzle: { runner: NONE, relayer: NONE },
 };
