@@ -1,6 +1,6 @@
 # poc-persists-data
 
-A proof of concept for data-persistence patterns with Drizzle ORM on PostgreSQL, exercised on a multi-tenant mini online store with an internal wallet: transactor manager, repositories with CQRS lite, audit trail, concurrency, idempotency, outbox, soft delete, migrations, row-level-security multi-tenancy, keyset pagination. Bun and TypeScript.
+A proof of concept for data-persistence patterns with Drizzle ORM on PostgreSQL, exercised on a multi-tenant mini online store with an internal wallet: transactor manager, repositories with CQRS lite, audit trail, concurrency, idempotency, outbox (handed to a BullMQ queue on Redis), soft delete, migrations, row-level-security multi-tenancy, keyset pagination. Bun and TypeScript. An Elysia HTTP layer is planned.
 
 The code is currently an empty scaffold: the directories and path aliases exist, the database provisioning is in place, and nothing else is implemented yet.
 
@@ -59,4 +59,5 @@ The full policy lives in `.claude/settings.json`. Reading environment and secret
 
 ## Non-goals
 
-- No real authentication, frontend or message broker; the acting user and tenant are simulated.
+- No real authentication or frontend; the acting user and tenant are simulated.
+- No external message broker service; the queue is BullMQ on Redis, and the Elysia HTTP layer is planned, not built.

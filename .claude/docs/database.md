@@ -14,7 +14,7 @@ Postgres schemas are split by bounded context, not by table type, so the namespa
 | `catalog` | `products`, `categories` | `products` has soft delete, stock and a version column. Owner of stock. |
 | `sales` | `customers`, `orders`, `items` | `customers` has soft delete. `items` snapshots product name and price. |
 | `wallet` | `accounts`, `entries` | `entries` is an immutable ledger. |
-| `messaging` | `events`, `idempotency` | `events` is the outbox. `idempotency` stores key, request hash and response. |
+| `messaging` | `events`, `idempotency` | `events` is the outbox, with delivery and retry state (delivered time, attempts, next attempt time, last error, failed time). `idempotency` stores key, request hash and response. |
 | `reporting` | views, materialized views | Read-only projections for the query side. |
 
 All objects are referenced with their schema. The migration journal lives in its own schema, away from the domain.
@@ -47,6 +47,7 @@ Columns, types, keys and foreign keys are modeled in `drizzle/DIAGRAM.md`; this 
 - Stock never goes negative, whichever concurrency strategy is used.
 - Wallet entries and audit entries are never updated or deleted: wallet through its schema's grants, the audit trail through its row-level policies.
 - An outbox event is committed if and only if the change that produced it committed.
+- An event is claimed only while it is undelivered, not failed and due; a delivered or failed event is never claimed again.
 - One idempotency key maps to at most one stored outcome per tenant (unique constraint).
 - Uniqueness on soft-deletable tables applies only to live rows (partial unique index on `deleted_at IS NULL`), so a deleted value can be reused.
 - Order items keep the name and price seen at purchase time, independent of later product changes.
@@ -63,7 +64,7 @@ Single PostgreSQL instance in a local container with a single database; tests ru
 - Reads that return lists use keyset pagination ordered by `(created_at, id)`; the tiebreaker keeps pages stable. OFFSET is only used in comparison experiments.
 - Soft-deleted rows are excluded by default in repositories and queries.
 - Schema changes are drizzle-kit migrations plus hand-written SQL for what it does not generate: roles, grants, row-level policies, triggers and partial indexes. Breaking changes follow expand then contract.
-- Outbox polling claims rows with `FOR UPDATE SKIP LOCKED`.
+- Outbox polling claims due rows with `FOR UPDATE SKIP LOCKED` on the relayer role, inside the transaction that also marks them delivered, so a crashed worker releases its claim.
 
 ---
 

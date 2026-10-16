@@ -41,6 +41,8 @@ Writing the event in the business transaction removes the dual-write problem: ei
 
 `FOR UPDATE SKIP LOCKED` lets several workers claim different pending rows without blocking each other; locked rows are skipped, not waited for. Ordering across workers is not guaranteed.
 
+When the sink is a queue, "delivered" means the queue accepted the job, not that anything processed it. From that point the queue owns the job, so the guarantee is only as durable as the queue's storage: a Redis instance without append-only persistence can lose accepted jobs after a restart. Using the event id as the job id makes the queue ignore a second job with the same id while the first one is still stored, which removes most duplicates after a worker crash; it does not remove all of them (a finished job that the queue has already discarded can be enqueued again), so consumers must still tolerate duplicates.
+
 ## Idempotency keys
 
 The key plus a hash of the request identify one logical operation. A unique constraint on the key decides the winner when two identical requests race: the loser fails or waits and then reads the stored response. The hash distinguishes a legitimate retry from key reuse with a different body, which must be rejected.

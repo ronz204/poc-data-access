@@ -6,7 +6,7 @@ paths:
 
 # Input Validation Conventions
 
-This governs how external input enters the application. The project has no network surface; entry points are scripts that simulate requests, and the same rule applies to any future one.
+This governs how external input enters the application. Entry points today are scripts that simulate requests; an HTTP layer is planned, and the rule applies to every entry point, whatever its kind.
 
 ---
 

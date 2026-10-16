@@ -19,11 +19,12 @@ The order and reasoning behind building the project. Why the project exists is i
 - Product catalog with soft delete and stock
 - Customers and orders with checkout that decrements stock atomically
 - Idempotent order creation
-- Outbox events delivered by a polling worker
+- Outbox events claimed by a polling worker and handed to a BullMQ queue on Redis, with a consumer
 - Wallet with an immutable ledger credited by sales
 - Audit trail of business actions
 - Tenant isolation through row-level security
 - Read models with joins and keyset-paginated lists over a large seeded dataset
+- HTTP surface on Elysia in front of the use cases (planned, after the phases below)
 
 ## Roadmap
 
@@ -35,23 +36,25 @@ Phase 0 is done; every other phase is pending.
 3. **Basic checkout** - order, items and stock in one transaction.
 4. **Concurrency** - parallel-load tests and comparison of the three stock strategies.
 5. **Idempotency** - idempotency key on checkout.
-6. **Outbox** - event insert in the checkout transaction and the delivery worker.
+6. **Outbox** - event insert in the checkout transaction, the polling worker, Redis in the compose file, and the BullMQ queue with its consumer.
 7. **Wallet** - accounts and ledger.
 8. **Row-level security** - policies and isolation tests run as the application role. Introduced after the problem is visible, not at the start.
 9. **Audit trail** - recorder driven by the Transactor context.
 10. **Read models** - joins, reporting views and keyset pagination over about a million seeded rows, compared with offset using query plans.
 11. **Refactor** - extract stock into an inventory schema with an expand then contract migration.
+12. **HTTP surface (planned)** - Elysia routes over the use cases: idempotency header, simulated tenant and actor context, zod validation at the boundary, error mapping.
 
 ## Risks
 
 - Drizzle and drizzle-kit are on a 1.0 release candidate; support for policies and multiple schemas may change or be incomplete, which pushes more work into hand-written SQL.
 - Row-level security can look correct while silently bypassed when connected as a privileged role; only an explicit test catches it.
+- Once the outbox marks an event delivered, the queue is the only holder of the job, so the no-loss guarantee holds only as far as Redis persistence does; the append-only setting has to be verified, not assumed.
 
 ## Done criteria
 
 - Each phase has tests against a real PostgreSQL that fail when the pattern is removed (for example, parallel checkouts oversell stock without the chosen strategy).
 - A tenant cannot read or write another tenant's rows, including through raw SQL on the application role.
-- A forced failure between checkout commit and event delivery loses no event and duplicates none beyond at-least-once.
+- A forced failure between checkout commit and the event reaching the queue loses no event and duplicates none beyond at-least-once.
 - Replaying a request with the same idempotency key returns the stored response without a second effect.
 - Ledger and audit rows cannot be updated or deleted by the application role.
 - A keyset-paginated listing over the seeded dataset is measurably flatter than offset at depth.

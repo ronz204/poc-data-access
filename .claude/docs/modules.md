@@ -61,12 +61,24 @@ strict reads: tenant, actor -> the id, or a transaction scope error when absent
 
 ## Outbox worker
 
-**Purpose.** Deliver events recorded in the outbox exactly as often as needed to never lose one, tolerating duplicates.
+**Purpose.** Hand the events recorded in the outbox to the queue as often as needed to never lose one, tolerating duplicates.
 
 **Flow.**
-1. Poll for undelivered events, claiming a batch with row locks that skip rows already claimed by another worker.
-2. Publish each event to the configured sink (log or fake webhook).
-3. Mark delivered rows; unclaimed or failed rows stay pending and are retried.
+1. In one open transaction on the relayer role, claim a batch of due, undelivered events with row locks that skip rows already claimed by another worker.
+2. For each event, add a job to the BullMQ queue using the event id as the job id, so the queue also deduplicates by id.
+3. Mark the event delivered once Redis has acknowledged the job, then commit. If the worker dies before committing, the locks fall and another worker claims the batch again.
+4. A failed enqueue increments the event's attempt counter and schedules the next attempt with exponential backoff; after the maximum number of attempts the event becomes failed, stops being claimed and stays visible for review.
+
+The worker is a separate process with a polling loop of configurable batch size and interval, and it shuts down gracefully on a signal. Delivered events are kept without expiry.
+
+## Queue consumer
+
+**Purpose.** Process the jobs the outbox worker enqueued.
+
+**Flow.**
+1. A separate process takes jobs from the BullMQ queue.
+2. It handles each job (initially logging it or calling a fake webhook), with BullMQ's own attempts and backoff for failures.
+3. Jobs can be delivered more than once, so handling must be idempotent per event id.
 
 ## Audit trail
 

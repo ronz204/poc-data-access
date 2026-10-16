@@ -16,7 +16,9 @@ request (tenant, actor, idempotency key)
   -> response (stored against the idempotency key)
 
 worker (separate loop)
-  -> claims pending outbox events -> publishes to log / fake webhook -> marks delivered
+  -> claims pending outbox events -> adds them to a queue -> marks delivered
+consumer (separate process)
+  -> takes jobs from the queue -> logs / fake webhook
 ```
 
 ## Capabilities
@@ -71,8 +73,8 @@ Outcomes the flow guarantees:
 ### Event delivery
 
 - Events are written in the same transaction as the change that caused them, so an event exists if and only if its change committed.
-- A worker repeatedly claims a batch of pending events, publishes each to the configured sink, and marks it delivered.
-- If publishing or the worker fails, events stay pending and are retried. Delivery is at least once, so consumers must tolerate duplicates.
+- A worker repeatedly claims a batch of pending events, adds each one to a queue, and marks it delivered once the queue has accepted it. A separate consumer processes the queued jobs.
+- If enqueueing or the worker fails, events stay pending and are retried with growing delays; an event that keeps failing is eventually set aside as failed and stays visible. Delivery is at least once, so consumers must tolerate duplicates.
 - Several workers can run together without taking the same event.
 
 ### Audit trail
@@ -104,7 +106,7 @@ Outcomes the flow guarantees:
 1. A tenant has users, products with stock, a customer and a wallet.
 2. The customer checks out two products. The order is created, stock drops, an event and audit entry are recorded, and the wallet is credited.
 3. The same request is replayed and returns the original response with no further effect.
-4. The worker delivers the `OrderPlaced` event to the sink; killing it before it marks the event delivered causes redelivery, never loss.
+4. The worker adds the `OrderPlaced` event to the queue and the consumer processes it; killing the worker before it marks the event delivered causes a second enqueue, never loss.
 5. Another tenant querying the same tables, even by raw SQL on the application role, sees none of these rows.
 6. A listing over a million seeded orders pages in constant time through the cursor.
 7. The audit trail shows who placed the order and what changed, and the ledger shows the credit that cannot be altered.
@@ -114,4 +116,4 @@ Outcomes the flow guarantees:
 ## Non-goals
 
 - Not a spec of any one capability's contract; those belong in per-slice specs once written.
-- No real login, frontend or message broker: the actor is simulated and events go to a log or fake webhook.
+- No real login or frontend: the actor is simulated. The queue is BullMQ on Redis, and its consumer only logs or calls a fake webhook.

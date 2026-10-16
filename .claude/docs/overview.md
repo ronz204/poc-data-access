@@ -30,13 +30,15 @@ Owned by the project:
 
 - A PostgreSQL database split into schemas by bounded context, with roles and grants provisioned from scripts
 - The data-access layer, repositories, read queries, and use cases that exercise each pattern
+- A queue (BullMQ on Redis) that receives the outbox events, with a consumer that only logs or calls a fake webhook
+- An HTTP layer on Elysia in front of the use cases (planned, not built yet)
 - Tests that run against a real PostgreSQL instance (concurrency, isolation and recovery cannot be verified against a mock)
 
 Explicit non-goals:
 
 - Real authentication: the acting user and tenant are simulated per request
 - Any frontend
-- A real message broker: the outbox publishes to a log or a fake webhook
+- An external message broker service such as Kafka or RabbitMQ, or real downstream consumers: the queue exists to hand events off, and its consumer only logs or calls a fake webhook
 - Production hosting, environments beyond local containers, or operations concerns
 
 ## Domain concepts
@@ -51,7 +53,7 @@ Explicit non-goals:
 | Customer | A buyer of a tenant. Supports soft delete. |
 | Order and item | A purchase and its lines. Items snapshot the product name and price at purchase time. |
 | Wallet account and entry | A tenant balance and its immutable ledger of movements, credited when sales complete. |
-| Outbox event | A domain event recorded atomically with the change that caused it, delivered later by a worker. |
+| Outbox event | A domain event recorded atomically with the change that caused it, handed later by a worker to a queue. |
 | Idempotency record | The stored outcome of a request identified by an idempotency key, replayed on retry. |
 | Audit trail entry | An append-only record of who did what to which entity, with a field-level diff. |
 | Read model | A query-optimized projection (views) used only for reads. |
