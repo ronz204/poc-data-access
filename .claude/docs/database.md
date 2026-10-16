@@ -15,6 +15,7 @@ Postgres schemas are split by bounded context, not by table type, so the namespa
 | `sales` | `customers`, `orders`, `items` | `customers` has soft delete. `items` snapshots product name and price. |
 | `wallet` | `accounts`, `entries` | `entries` is an immutable ledger. |
 | `messaging` | `events`, `idempotency` | `events` is the outbox, with delivery and retry state (delivered time, attempts, next attempt time, last error, failed time). `idempotency` stores key, request hash and response. |
+| `inventory` (planned) | `stock` | Introduced by the stock refactor: one row per product with quantity, stock version and a sellable flag, taking over stock from `catalog.products`. Until then stock lives in the catalog. |
 | `reporting` | views, materialized views | Read-only projections for the query side. Exposed as views with a tenant predicate; materialized views are internal storage and are never granted. |
 
 All objects are referenced with their schema. The migration journal lives in its own schema, away from the domain.
@@ -44,7 +45,7 @@ Columns, types, keys and foreign keys are modeled in `drizzle/DIAGRAM.md`; this 
 ## Persistence invariants
 
 - Every tenant-scoped row carries `tenant_id` and is covered by a row-level policy.
-- Foreign keys across schemas exist only toward `platform.tenants` and from `sales.items` to `catalog.products`. Wallet, messaging and audit refer to their origin by type and id with no foreign key, keeping them decoupled.
+- Foreign keys across schemas exist only toward `platform.tenants`, from `sales.items` to `catalog.products`, and, once stock moves out of the catalog, from `inventory.stock` to `catalog.products`. Wallet, messaging and audit refer to their origin by type and id with no foreign key, keeping them decoupled.
 - Stock never goes negative, whichever concurrency strategy is used.
 - Wallet entries, audit entries, orders and order items are never updated or deleted: wallet entries through their schema's grants, the others through row-level policies that allow select and insert only.
 - An outbox event is committed if and only if the change that produced it committed.
