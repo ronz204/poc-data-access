@@ -9,7 +9,7 @@ export const trailer = platform.table.withRLS(
 	"trailer",
 	{
 		id: ColumnsHelper.id(),
-		tenantId: uuid("tenant_id").references(() => tenants.id),
+		tenantId: ColumnsHelper.tenant().references(() => tenants.id),
 		actorId: uuid("actor_id"),
 		origin: text("origin").notNull(),
 		action: text("action").notNull(),

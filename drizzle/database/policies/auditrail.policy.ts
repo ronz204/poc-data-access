@@ -14,7 +14,7 @@ export class AuditrailPolicy {
 			pgPolicy("trailer_insert_policy", {
 				for: "insert",
 				to: runner,
-				withCheck: sql`${tenantId} is not distinct from ${PoliciesHelper.tenant()}
+				withCheck: sql`${tenantId} = ${PoliciesHelper.tenant()}
 					and ${actorId} is not distinct from ${PoliciesHelper.actor()}
 					and ${origin} = ${PoliciesHelper.origin()}`,
 			}),
