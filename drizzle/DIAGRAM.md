@@ -6,12 +6,11 @@ Entity-relationship model of the PostgreSQL database, one Mermaid diagram per sc
 
 | Schema | Tables | Purpose |
 |---|---|---|
-| `platform` | `tenants`, `users`, `memberships`, `invitations` | Identity, tenancy and invitations to join a tenant. |
+| `platform` | `tenants`, `users`, `memberships`, `invitations`, `trailer` | Identity, tenancy, invitations to join a tenant, and the append-only audit trail. |
 | `catalog` | `categories`, `products` | Sellable items and their stock. |
 | `sales` | `customers`, `orders`, `items` | Purchases and their lines. |
 | `wallet` | `accounts`, `entries` | Tenant balance and its immutable ledger. |
 | `messaging` | `events`, `idempotency` | Outbox and idempotent request outcomes. |
-| `audit` | `trailer` | Append-only record of audited actions. |
 | `reporting` | views only | Read-only projections for the query side, defined with the read queries. |
 
 ## Conventions
@@ -34,7 +33,7 @@ Entity-relationship model of the PostgreSQL database, one Mermaid diagram per sc
 | Money | `bigint` in minor units (cents), one fixed currency | Exact integer arithmetic; no decimal-as-string handling in TypeScript. |
 | Stock and quantities | `integer` with a check constraint | The database refuses negative stock whatever the concurrency strategy. |
 | Timestamps | `timestamptz` | Unambiguous instants. |
-| Free-form structured data | `jsonb` | Outbox payloads, idempotent responses, audit diffs. |
+| Free-form structured data | `jsonb` | Outbox payloads, idempotent responses, audit metadata. |
 | Enumerations | `text` with a check constraint | Cheaper to evolve than a Postgres enum type. |
 
 ### Column suffixes and names
@@ -52,8 +51,8 @@ Entity-relationship model of the PostgreSQL database, one Mermaid diagram per sc
 ### Constraints
 
 - Soft-deletable tables (`catalog.products`, `sales.customers`) enforce uniqueness only on live rows through a partial unique index `WHERE deleted_at IS NULL`, so a deleted value can be reused.
-- Immutable tables (`wallet.entries`, `audit.trailer`) have no `updated_at` or `deleted_at`; the application role can only insert and select (or insert only, for audit).
-- Foreign keys cross schemas only toward `platform.tenants` and from `sales.items` to `catalog.products`. Wallet, messaging and audit stay decoupled and refer to their origin by type and id.
+- Immutable tables (`wallet.entries`, `platform.trailer`) have no `updated_at` or `deleted_at`; the application role can only insert and select. For `wallet.entries` that is the schema's default grant; `platform.trailer` sits in a writable schema, so its row-level policies allow only select and insert.
+- Foreign keys cross schemas only toward `platform.tenants` and from `sales.items` to `catalog.products`. Wallet, messaging and the audit trail stay decoupled and refer to their origin by type and id.
 - Order of list reads is `(created_at, id)`, so list tables index on `(tenant_id, created_at, id)`.
 
 ## Relations map
@@ -75,7 +74,7 @@ erDiagram
     wallet_entries["wallet.entries"]
     messaging_events["messaging.events"]
     messaging_idempotency["messaging.idempotency"]
-    audit_trailer["audit.trailer"]
+    platform_trailer["platform.trailer"]
 
     platform_tenants ||--o{ platform_memberships : has
     platform_users ||--o{ platform_memberships : joins
@@ -88,7 +87,7 @@ erDiagram
     platform_tenants ||--o{ wallet_accounts : owns
     platform_tenants ||--o{ messaging_events : owns
     platform_tenants ||--o{ messaging_idempotency : owns
-    platform_tenants ||--o{ audit_trailer : owns
+    platform_tenants |o--o{ platform_trailer : records
     catalog_categories |o--o{ catalog_products : groups
     sales_customers ||--o{ sales_orders : places
     sales_orders ||--|{ sales_items : contains
@@ -96,7 +95,7 @@ erDiagram
     wallet_accounts ||--o{ wallet_entries : records
 ```
 
-`wallet.entries`, `messaging.events` and `audit.trailer` also point at their origin (an order, a payment, any entity) through `reference_type` and `reference_id` or `entity_type` and `entity_id`; those links have no foreign key and are not drawn.
+`wallet.entries`, `messaging.events` and `platform.trailer` also point at their origin (an order, a payment, any entity) through `reference_type` and `reference_id` or `entity_type` and `entity_id`; those links have no foreign key and are not drawn.
 
 ## platform
 
@@ -131,15 +130,30 @@ erDiagram
         timestamptz created_at
         timestamptz accepted_at "null until accepted"
     }
+    trailer {
+        uuid id PK
+        uuid tenant_id FK "nullable: actions with no tenant"
+        uuid actor_id "nullable, no FK: null on system runs"
+        text origin "check: name or name:detail"
+        text action "check: entity.verb"
+        text entity_type "no FK"
+        uuid entity_id "nullable, no FK"
+        jsonb metadata "default {}"
+        xid8 xact_id "default pg_current_xact_id()"
+        timestamptz occurred_at "default now()"
+    }
     tenants ||--o{ memberships : has
     users ||--o{ memberships : joins
     tenants ||--o{ invitations : issues
     users ||--o{ invitations : sends
+    tenants |o--o{ trailer : records
 ```
 
 `tenants` has no row-level policy. `users` is not tenant-scoped.
 
 `invitations` is tenant-scoped. The invitee is identified by email because the person may not have a user yet; accepting creates the membership (and the user if needed), so there is no foreign key to the invitee. Expiry is derived from `expires_at`, not stored as a status. A partial unique index on `(tenant_id, email) WHERE status = 'pending'` allows one open invitation per email and tenant, and the owner role can only be assigned through membership, never by invitation. Looking an invitation up by token happens before the tenant is known, so that read needs a dedicated path when row-level security lands.
+
+`trailer` is the audit trail: one row per audited action, written in the same transaction as the change. `tenant_id` is nullable because some actions have no tenant at all (signing up a user); actions on a tenant from a platform context carry the affected tenant. `actor_id` is null on system runs, and `origin` always says which process wrote the row. `xact_id` groups the entries of one transaction. Row-level security allows the application role only select (rows of the current tenant) and insert (tenant, actor and origin must match the transaction settings), so rows are never updated or deleted. It is a candidate for monthly partitioning by `occurred_at`; if partitioned, the primary key becomes `(id, occurred_at)` because Postgres requires the partition key in every unique constraint.
 
 ## catalog
 
@@ -251,25 +265,6 @@ erDiagram
 ```
 
 `events` is the outbox: an event is committed if and only if the change that produced it committed. A partial index on undelivered rows serves the polling query. `idempotency` allows one stored outcome per tenant and key.
-
-## audit
-
-```mermaid
-erDiagram
-    trailer {
-        uuid id PK
-        uuid tenant_id FK
-        uuid actor_id "no FK"
-        uuid request_id
-        text action
-        text entity_type "no FK"
-        uuid entity_id "no FK"
-        jsonb diff
-        timestamptz created_at
-    }
-```
-
-Append-only for the application role. It is a candidate for monthly partitioning by `created_at`; if partitioned, the primary key becomes `(id, created_at)` because Postgres requires the partition key in every unique constraint.
 
 ## reporting
 

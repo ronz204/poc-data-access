@@ -1,23 +1,32 @@
 # Modules
 
-Functional reference for the components the project builds. None are implemented yet: this file records each component's intended behavior and is updated in place as each one lands. Why the components exist lives in the overview, not here.
+Functional reference for the components the project builds. Only the Transactor is implemented; the other sections record intended behavior and are updated in place as each component lands. Why the components exist lives in the overview, not here.
 
 ---
 
 ## Transactor
 
-**Purpose.** The single place that opens, commits and rolls back database transactions, and that carries per-request context (tenant, actor, request id) into the database session.
+**Purpose.** The single place that opens, commits and rolls back database transactions, and that carries per-request context (tenant, actor, origin) into the database session.
 
 **Flow.**
-1. A use case asks the Transactor to run a unit of work.
-2. The Transactor begins a transaction and sets the tenant on the session, scoped to that transaction only.
-3. Repositories and queries resolve the transaction-bound executor from the Transactor instead of opening their own.
-4. On success the audit entries and outbox events recorded during the unit of work commit together with the business changes; on failure everything rolls back.
+1. A caller asks the Transactor to run a unit of work, passing a context, the DI token of the entry service and the work to run on it.
+2. The Transactor begins a transaction and writes tenant, actor and origin as transaction-local settings (`app.tenant`, `app.actor`, `app.origin`) in one statement; an absent value is written as an empty string.
+3. It opens a DI scope bound to that transaction, with the transaction-bound executor and the context, and resolves the entry service from it, so repositories and queries receive the executor instead of opening their own.
+4. On success the audit entries and outbox events recorded during the unit of work commit together with the business changes; on failure everything rolls back. Driver errors leave the Transactor classified as persistence errors.
+5. A run never nests: a use case that needs several writes calls the Transactor once and passes the unit of work down.
 
 **Data shape.**
 ```
-context: { tenantId, actorId, requestId }
+context (built only through these three constructors):
+  tenant(tenantId, actorId, origin = "request")   authenticated request inside a tenant
+  platform(actorId, origin = "request")            authenticated user, no tenant
+  system(origin, tenantId?)                         worker or anonymous flow, no actor
+
+fields: tenantId | null, actorId | null, origin (never blank)
+strict reads: tenant, actor -> the id, or a transaction scope error when absent
 ```
+
+**Errors.** A persistence error carries a kind (unique, foreign key, not null, check, exclusion, invalid input, forbidden, aborted, contention, timeout, unavailable), the SQLSTATE code, table, column and constraint, and whether it is retryable. A repository can translate a known constraint name into a domain error of its own; anything not mapped stays a persistence error.
 
 **Dependencies.** Built on the DI container and the Drizzle client. Everything that writes depends on it.
 
@@ -64,14 +73,17 @@ context: { tenantId, actorId, requestId }
 **Purpose.** Answer who did what, to which entity, and when, without database triggers.
 
 **Flow.**
-1. The Transactor's context supplies tenant, actor and request id.
+1. The Transactor's context supplies tenant, actor and origin.
 2. A recorder writes one entry per audited action inside the same transaction as the change, so a rollback removes the entry too.
-3. Entries hold an action name, entity type and id, and a diff of changed fields; secret values are never stored.
+3. Entries hold an action name (`entity.verb`), entity type and id, and metadata about the change; secret values are never stored.
+4. Row-level security only lets the application insert an entry whose tenant, actor and origin match the transaction settings, and read entries of the current tenant; entries are never updated or deleted.
 
 **Data shape.**
 ```
-trailer: tenant, actor, request id, action, entity type, entity id, diff, created at
+trailer: tenant (nullable), actor (nullable), origin, action, entity type, entity id, metadata, transaction id, occurred at
 ```
+
+An entry without an actor comes from a system run; its origin says which process wrote it. An entry without a tenant belongs to an action that has none, such as signing up a user.
 
 ## Wallet ledger
 

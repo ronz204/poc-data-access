@@ -37,7 +37,7 @@ Phase 0 is done; every other phase is pending.
 5. **Idempotency** - idempotency key on checkout.
 6. **Outbox** - event insert in the checkout transaction and the delivery worker.
 7. **Wallet** - accounts and ledger.
-8. **Row-level security** - policies, isolation tests and the forced-RLS test. Introduced after the problem is visible, not at the start.
+8. **Row-level security** - policies and isolation tests run as the application role. Introduced after the problem is visible, not at the start.
 9. **Audit trail** - recorder driven by the Transactor context.
 10. **Read models** - joins, reporting views and keyset pagination over about a million seeded rows, compared with offset using query plans.
 11. **Refactor** - extract stock into an inventory schema with an expand then contract migration.
