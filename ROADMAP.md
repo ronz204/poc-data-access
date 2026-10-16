@@ -104,8 +104,8 @@ Slice: idempotency-keys.
 Slice: outbox-delivery.
 
 - [ ] Outbox table with retry columns
-- [x] Redis in the compose file, with append-only persistence and a password
-- [ ] BullMQ queue and its connection setting
+- [x] Redis in the compose file, with append-only persistence, ACL users and its connection setting (`BULL_REDIS_URL`)
+- [ ] BullMQ queue wired to that connection
 - [ ] `OrderPlaced` event inserted in the checkout transaction
 - [ ] Polling worker claiming batches with skip-locked row locks, enqueueing with the event id as job id, with timeouts
 - [ ] Retry with backoff and the failed state
