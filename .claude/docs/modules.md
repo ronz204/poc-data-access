@@ -44,11 +44,12 @@ strict reads: tenant, actor -> the id, or a transaction scope error when absent
 **Purpose.** Create an order, its items and the stock decrement atomically, then record the outbox event and the wallet credit.
 
 **Flow.**
-1. Validate the request and resolve the idempotency record.
-2. Decrement stock using the strategy under evaluation (row lock, conditional atomic update, or version check).
+1. Admit the actor, validate the request and resolve the idempotency record.
+2. Reserve stock using the strategy under evaluation (row lock, conditional atomic update, or version check).
 3. Insert order and items with price and name snapshots.
-4. Insert the `OrderPlaced` outbox event and the audit entry.
-5. Commit, then store the response against the idempotency key.
+4. Insert the `OrderPlaced` outbox event.
+5. Credit the wallet by the order total, when it is positive.
+6. Insert the audit entry, store the response against the idempotency key, and commit; all of it is one transaction.
 
 ## Idempotency
 

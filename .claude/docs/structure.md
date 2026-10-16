@@ -8,7 +8,8 @@ Stack, runtime topology and cross-cutting patterns. The data model and database 
 
 | Layer | Choice | Rationale |
 |---|---|---|
-| Runtime and package manager | Bun | Fast TypeScript execution and test runner without a build step. |
+| Runtime and package manager | Bun | Fast TypeScript execution without a build step. |
+| Test runner (planned) | vitest | Integration tests against a real PostgreSQL and Redis; not introduced yet. |
 | Language | TypeScript, strict | Strict flags including unchecked indexed access and verbatim module syntax keep mappings between rows and entities honest. |
 | ORM | Drizzle ORM (1.0 release candidate) | The subject of the study: typed SQL, explicit schemas, migrations through drizzle-kit. |
 | Driver | postgres.js | Driver used by Drizzle for PostgreSQL. |

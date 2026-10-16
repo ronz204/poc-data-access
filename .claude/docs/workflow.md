@@ -6,7 +6,7 @@ How the project is expected to behave once finished: the capabilities it offers 
 
 ## End state at a glance
 
-A multi-tenant mini online store with an internal wallet, driven by simulated requests. Each request carries a tenant, an acting user and an optional idempotency key. The system runs the request as one unit of work, and everything it records (business rows, audit entry, outbox event, wallet movement) commits together or not at all. A background worker later delivers the recorded events.
+A multi-tenant mini online store with an internal wallet, driven by simulated requests. Each request carries a tenant, an acting user and, for the writes that require one, an idempotency key. The system runs the request as one unit of work, and everything it records (business rows, audit entry, outbox event, wallet movement) commits together or not at all. A background worker later delivers the recorded events.
 
 ```
 request (tenant, actor, idempotency key)
@@ -50,8 +50,8 @@ The central write flow. A customer buys one or more products.
 2. Stock is decremented for each line; if any line lacks stock the whole checkout fails and nothing changes.
 3. The order and its items are created, each item keeping the product name and price seen at purchase time.
 4. An `OrderPlaced` event is recorded in the outbox, and an audit entry is written.
-5. The sale is credited to the tenant's wallet.
-6. The transaction commits, and the response is stored against the idempotency key.
+5. The sale is credited to the tenant's wallet when the total is positive.
+6. The response is stored against the idempotency key and the transaction commits.
 
 Outcomes the flow guarantees:
 
