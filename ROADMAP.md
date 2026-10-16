@@ -6,22 +6,24 @@ Build progress of poc-persists-data, one step per phase of the approach; not a c
 
 ## Overview
 
-**Overall progress: 9 / 48 tasks — 19%**
+**Overall progress: 9 / 72 tasks — 13%**
 
 | # | Step | Status | Progress |
 |---|---|---|---|
 | 0 | [Base infrastructure](#0--base-infrastructure) | ✅ Done | 4/4 — 100% |
 | 1 | [Base migrations and Transactor](#1--base-migrations-and-transactor) | ✅ Done | 5/5 — 100% |
-| 2 | [Repositories and product CRUD](#2--repositories-and-product-crud) | 🔲 Not started | 0/4 — 0% |
-| 3 | [Basic checkout](#3--basic-checkout) | 🔲 Not started | 0/4 — 0% |
-| 4 | [Concurrency](#4--concurrency) | 🔲 Not started | 0/5 — 0% |
-| 5 | [Idempotency](#5--idempotency) | 🔲 Not started | 0/3 — 0% |
-| 6 | [Outbox](#6--outbox) | 🔲 Not started | 0/4 — 0% |
-| 7 | [Wallet](#7--wallet) | 🔲 Not started | 0/4 — 0% |
-| 8 | [Row-level security](#8--row-level-security) | 🔲 Not started | 0/4 — 0% |
+| 2 | [Identity](#2--identity) | 🔲 Not started | 0/8 — 0% |
+| 3 | [Catalog and customers](#3--catalog-and-customers) | 🔲 Not started | 0/5 — 0% |
+| 4 | [Basic checkout](#4--basic-checkout) | 🔲 Not started | 0/5 — 0% |
+| 5 | [Concurrency](#5--concurrency) | 🔲 Not started | 0/6 — 0% |
+| 6 | [Idempotency](#6--idempotency) | 🔲 Not started | 0/4 — 0% |
+| 7 | [Outbox](#7--outbox) | 🔲 Not started | 0/8 — 0% |
+| 8 | [Wallet](#8--wallet) | 🔲 Not started | 0/7 — 0% |
 | 9 | [Audit trail](#9--audit-trail) | 🔲 Not started | 0/4 — 0% |
-| 10 | [Read models](#10--read-models) | 🔲 Not started | 0/4 — 0% |
-| 11 | [Refactor](#11--refactor) | 🔲 Not started | 0/3 — 0% |
+| 10 | [Row-level security](#10--row-level-security) | 🔲 Not started | 0/5 — 0% |
+| 11 | [Read models](#11--read-models) | 🔲 Not started | 0/4 — 0% |
+| 12 | [Refactor](#12--refactor) | 🔲 Not started | 0/3 — 0% |
+| 13 | [HTTP surface](#13--http-surface) | 🔲 Not started | 0/4 — 0% |
 
 Status legend: 🔲 Not started · 🔄 In progress · ✅ Done (only once every task under it is checked).
 
@@ -46,76 +48,126 @@ The Transactor comes first: row-level security, audit and the outbox all depend 
 - [x] Tenant, actor and origin set per transaction, scoped to that transaction only
 - [x] Real-database test that the context does not leak between transactions
 
-## 2 — Repositories and product CRUD
+## 2 — Identity
 
-- [ ] Product table and domain entity
-- [ ] Write repository running on the transaction-bound executor, with soft delete and explicit restore
-- [ ] Product use cases: create, update, delete, restore
-- [ ] Real-database tests for soft delete and restore
+Slices: tenant-onboarding, member-invitation. Everything after this needs a tenant and an actor.
 
-## 3 — Basic checkout
+- [ ] Memberships migration: own id, `removed_at`, unique active membership per tenant and user
+- [ ] Transactor operation that enters a tenant, used only by create tenant
+- [ ] Email value object and sign-up
+- [ ] Create tenant: tenant and owner membership atomically
+- [ ] Member management: change role, remove, leave, with last-owner protection under the tenant lock
+- [ ] Admission use case and read model
+- [ ] Invitations: invite, accept, revoke, list
+- [ ] Real-database tests: last owner under concurrent demotions, single-use invitation under concurrent accepts
 
-- [ ] Customer, order and order item tables
-- [ ] Checkout use case creating the order and items with price and name snapshots
-- [ ] Atomic stock decrement in the same transaction
+## 3 — Catalog and customers
+
+Slices: product-catalog, customer-records.
+
+- [ ] Catalog tables: categories and products with the composite foreign key, checks and partial unique index
+- [ ] Product and category repositories and use cases: create, edit with version, adjust stock, delete, restore
+- [ ] Customer table and use cases, with soft delete and explicit restore
+- [ ] Keyset-paginated lists of products and customers, with include-deleted for owner and admin
+- [ ] Real-database tests: soft delete, restore conflicts, stale version, stock never negative
+
+## 4 — Basic checkout
+
+Slice: order-checkout, without idempotency, outbox, wallet and audit steps.
+
+- [ ] Order and item tables with composite foreign keys
+- [ ] Checkout use case: validation with the customer share lock, order and items with price and name snapshots
+- [ ] Atomic stock reservation (conditional atomic update) in the same transaction, lines ordered by product id
+- [ ] Get order and list orders
 - [ ] Rollback test: a failure leaves no order and no stock change
 
-## 4 — Concurrency
+## 5 — Concurrency
 
 - [ ] Parallel-load test harness
+- [ ] Stock reservation port, with the conditional atomic update as the default
 - [ ] Stock strategy: row lock
-- [ ] Stock strategy: conditional atomic update
-- [ ] Stock strategy: version check
+- [ ] Stock strategy: version check on the stock version, with bounded retry
 - [ ] Comparison of the three, plus a test that parallel checkouts oversell without a strategy
+- [ ] Test that a product deleted mid-checkout is not sold
 
-## 5 — Idempotency
+## 6 — Idempotency
+
+Slice: idempotency-keys.
 
 - [ ] Idempotency table with key, request hash and saved response
-- [ ] Idempotency key handled in checkout (replay returns the stored response, a different hash is a conflict)
-- [ ] Tests: replay, conflict, and concurrent requests with the same key
+- [ ] Wrapper for write use cases: insert-first, canonical request hash, bounded lock wait
+- [ ] Idempotency key required in checkout
+- [ ] Tests: replay, conflict, concurrent requests with the same key, rollback leaves no record
 
-## 6 — Outbox
+## 7 — Outbox
 
-- [ ] Outbox table
+Slice: outbox-delivery.
+
+- [ ] Outbox table with retry columns
+- [ ] Redis in the compose file and the BullMQ queue
 - [ ] `OrderPlaced` event inserted in the checkout transaction
-- [ ] Polling worker claiming batches with skip-locked row locks
-- [ ] Failure test: a forced failure between commit and delivery loses no event
+- [ ] Polling worker claiming batches with skip-locked row locks, enqueueing with the event id as job id, with timeouts
+- [ ] Retry with backoff and the failed state
+- [ ] Queue consumer, idempotent per event id
+- [ ] Privileges: insert-only for the application role, column-level update for the relayer
+- [ ] Failure tests: a forced failure between commit and enqueue loses no event, two workers never claim the same event, a Redis restart keeps the accepted jobs
 
-## 7 — Wallet
+## 8 — Wallet
 
-- [ ] Wallet account and ledger tables
-- [ ] Wallet credit recorded by a sale
-- [ ] Concurrent movements cannot overspend (lock or conditional update)
-- [ ] Application role cannot update or delete ledger rows, verified by test
+Slice: wallet-ledger.
 
-## 8 — Row-level security
-
-Introduced after the problem is visible, not at the start.
-
-- [ ] Policies on the tenant-owned tables
-- [ ] Policies driven by the tenant set through the Transactor
-- [ ] Isolation tests, including raw SQL on the application role
-- [ ] Forced-RLS test proving a privileged role does not silently bypass the policies
+- [ ] Wallet account and entry tables, one account per tenant
+- [ ] Lazy account creation and the sale credit inside the checkout transaction (a zero total writes no entry)
+- [ ] Withdrawal, adjustment and reversal for the owner, with idempotency key
+- [ ] Balance protected by the conditional update: concurrent movements cannot overspend
+- [ ] Application role cannot update or delete ledger rows and can update only the balance columns, verified by test
+- [ ] Reconciliation check and tests: balance equals the sum of the entries
+- [ ] Wallet reads for owner and admin
 
 ## 9 — Audit trail
 
-- [ ] Append-only audit table
-- [ ] Recorder driven by the Transactor context
-- [ ] Business actions audited in the same transaction, with secret values excluded
-- [ ] Tests: rollback removes the entry, and the application role cannot update or delete entries
+Slice: audit-recording. The trail table already exists from the base migration.
 
-## 10 — Read models
+- [ ] Recorder driven by the Transactor context, with per-action allowlists
+- [ ] Business actions of every earlier slice audited in the same transaction, with secret values excluded
+- [ ] Trail read query for owner and admin
+- [ ] Tests: rollback removes the entry, the application role cannot update or delete entries, null-tenant entries are not readable by a tenant
+
+## 10 — Row-level security
+
+Introduced after the problem is visible, not at the start.
+
+- [ ] Policies on the tenant-owned tables; immutable tables get select and insert policies only
+- [ ] Policies driven by the tenant set through the Transactor
+- [ ] Dedicated read paths for admission and for the invitation token lookup
+- [ ] Isolation tests, including raw SQL on the application role
+- [ ] Forced-RLS test proving a privileged role does not silently bypass the policies
+
+## 11 — Read models
+
+Slice: sales-reporting (not yet specified).
 
 - [ ] Seed about a million rows
 - [ ] Read queries with joins and reporting views
 - [ ] Keyset-paginated listings
 - [ ] Query-plan comparison showing keyset flatter than offset at depth
 
-## 11 — Refactor
+## 12 — Refactor
+
+Slice: stock-inventory (not yet specified).
 
 - [ ] Inventory schema for stock
 - [ ] Expand migration
 - [ ] Contract migration, with the existing tests still passing
+
+## 13 — HTTP surface
+
+Slice: http-surface (planned, not yet specified).
+
+- [ ] Elysia routes over the use cases
+- [ ] Idempotency header and the simulated tenant and actor context
+- [ ] zod validation at the boundary and error mapping
+- [ ] Tests over HTTP
 
 ---
 
