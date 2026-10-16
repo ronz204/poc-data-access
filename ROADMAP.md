@@ -6,7 +6,7 @@ Build progress of poc-persists-data, one step per phase of the approach; not a c
 
 ## Overview
 
-**Overall progress: 9 / 74 tasks — 12%**
+**Overall progress: 9 / 76 tasks — 12%**
 
 | # | Step | Status | Progress |
 |---|---|---|---|
@@ -22,7 +22,7 @@ Build progress of poc-persists-data, one step per phase of the approach; not a c
 | 9 | [Audit trail](#9--audit-trail) | 🔲 Not started | 0/4 — 0% |
 | 10 | [Row-level security](#10--row-level-security) | 🔲 Not started | 0/5 — 0% |
 | 11 | [Read models](#11--read-models) | 🔲 Not started | 0/6 — 0% |
-| 12 | [Refactor](#12--refactor) | 🔲 Not started | 0/3 — 0% |
+| 12 | [Refactor](#12--refactor) | 🔲 Not started | 0/5 — 0% |
 | 13 | [HTTP surface](#13--http-surface) | 🔲 Not started | 0/4 — 0% |
 
 Status legend: 🔲 Not started · 🔄 In progress · ✅ Done (only once every task under it is checked).
@@ -156,11 +156,13 @@ Slice: sales-reporting.
 
 ## 12 — Refactor
 
-Slice: stock-inventory (not yet specified).
+Slice: stock-inventory.
 
-- [ ] Inventory schema for stock
-- [ ] Expand migration
-- [ ] Contract migration, with the existing tests still passing
+- [ ] Expand: inventory schema and stock table, with privileges and the composite foreign key
+- [ ] Dual-write in the application and batch backfill
+- [ ] Consistency check reporting zero differences under concurrent load
+- [ ] Switch authority to inventory, reversible by flipping the reads back
+- [ ] Contract migration dropping the old columns, with the existing tests still passing
 
 ## 13 — HTTP surface
 
