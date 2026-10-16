@@ -2,6 +2,7 @@ name: pattern
 
 include:
   - docker/data/compose.yml
+  - docker/queue/compose.yml
 
 networks:
   pattern-network:
@@ -10,3 +11,5 @@ networks:
 volumes:
   pattern-postgres-data:
     name: pattern-postgres-data
+  pattern-redis-data:
+    name: pattern-redis-data
