@@ -69,7 +69,7 @@ Generated server-side with high entropy and returned in clear only by Invite. On
 
 ### Audited actions
 
-`invitation.created`, `invitation.revoked`, `invitation.accepted`, plus `user.signed_up` and `membership.created` when acceptance creates them. Invite and Revoke run in the tenant's context; Accept runs in a system context scoped to the tenant. Entries carry the email and role, never the token or its hash. Accept has no actor, so its entries record the accepting user's id and email in the metadata; otherwise the trail could not say who joined.
+`invitation.created`, `invitation.revoked`, `invitation.accepted`, plus `membership.created` when acceptance creates the membership. Creating the user during acceptance is a platform action outside the tenant and is not audited. Invite and Revoke run in the tenant's context; Accept runs in a system context scoped to the tenant. Entries carry the email and role, never the token or its hash. Accept has no actor, so its entries record the accepting user's id and email in the metadata; otherwise the trail could not say who joined.
 
 ### Current state
 
@@ -89,7 +89,7 @@ The table exists from the platform base migration with the columns and indexes a
 
 ## Deferred / Open questions
 
-- The dedicated read path for finding an invitation by token under row-level security. The lookup runs before the tenant is known, so it needs its own access path when the policies land (roadmap phase 8).
+- The dedicated read path for finding an invitation by token under row-level security. The lookup runs before the tenant is known, so it needs its own access path when the policies land (the roadmap's row-level security phase).
 - Notifying the invitee through an outbox event once a delivery mechanism exists.
 - Cleaning up long-expired pending rows.
 - Whether the list needs a status filter.
@@ -114,4 +114,4 @@ Integration tests against a real PostgreSQL, using vitest once it is introduced:
 
 ---
 
-Last updated: 2026-10-15.
+Last updated: 2026-10-16.

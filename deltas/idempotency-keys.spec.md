@@ -106,7 +106,7 @@ Design only: there is no model, migration or code for the idempotency table or w
 - The same key with a different request hash never runs the work and never returns the stored response.
 - A rolled-back request leaves no record.
 - A replay has no side effects.
-- A tenant cannot read or collide with another tenant's records (row-level security, roadmap phase 8).
+- A tenant cannot read or collide with another tenant's records (row-level security, added in its roadmap phase).
 
 ## Deferred / Open questions
 
@@ -135,4 +135,4 @@ Integration tests against a real PostgreSQL, using vitest once it is introduced:
 
 ---
 
-Last updated: 2026-10-15.
+Last updated: 2026-10-16.

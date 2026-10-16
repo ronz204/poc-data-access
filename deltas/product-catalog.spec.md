@@ -105,7 +105,7 @@ Design only: there is no model, migration or code for the catalog yet.
 - A deleted product is invisible by default and can never be modified or sold.
 - A product is never physically deleted.
 - A product references only a category of its own tenant, enforced by a composite foreign key.
-- A tenant cannot see or modify another tenant's catalog (row-level security, roadmap phase 8).
+- A tenant cannot see or modify another tenant's catalog (row-level security, added in its roadmap phase).
 
 ## Deferred / Open questions
 
@@ -134,4 +134,4 @@ Integration tests against a real PostgreSQL, using vitest once it is introduced:
 
 ---
 
-Last updated: 2026-10-15.
+Last updated: 2026-10-16.

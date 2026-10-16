@@ -156,7 +156,7 @@ Locks are always taken in the same order: product rows by id, then the wallet ac
 - A deleted product or customer cannot be part of a new order.
 - Orders and items are immutable once placed.
 - An order's customer, and an item's order and product, always belong to the same tenant as the row itself, enforced by composite foreign keys.
-- A tenant cannot read or place orders in another tenant (row-level security, roadmap phase 8).
+- A tenant cannot read or place orders in another tenant (row-level security, added in its roadmap phase).
 
 ## Deferred / Open questions
 
@@ -186,4 +186,4 @@ Integration tests against a real PostgreSQL, using vitest once it is introduced.
 
 ---
 
-Last updated: 2026-10-15.
+Last updated: 2026-10-16.

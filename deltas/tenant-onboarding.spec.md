@@ -21,7 +21,8 @@ Non-goals:
 - Invitations and how an invited person joins a tenant (owned by the member-invitation slice; it creates memberships through this slice's rules).
 - How audit entries are recorded (owned by the audit-recording slice; this slice only names which actions it audits).
 - Real authentication: credentials, passwords, sessions, second factor. The actor arrives already identified.
-- Row-level policies on the platform tables (roadmap phase 8, cross-cutting).
+- Row-level policies on the platform tables (the roadmap's row-level security phase, cross-cutting).
+- Auditing anything this slice does outside a tenant: signing up and creating a tenant write no audit entry, because the trail only traces what happens inside a tenant.
 - Renaming, suspending or deleting a tenant.
 
 ## Contract
@@ -31,7 +32,7 @@ Non-goals:
 | Use case | Transactor context | Input | Effect |
 |---|---|---|---|
 | Sign up user | `system(origin)`, no actor, no tenant | email, name | Inserts a user with a normalized email. |
-| Create tenant | `platform(actorId)` | name | Inserts the tenant, enters it (see below), then inserts an `owner` membership for the actor, all in the same transaction. |
+| Create tenant | `platform(actorId)` | name | Inserts the tenant and an `owner` membership for the actor in the same transaction. |
 | Change role | `tenant(tenantId, actorId)` | target user, new role | Updates the target's active membership role. |
 | Remove member | `tenant(tenantId, actorId)` | target user | Soft-deletes the target's active membership. |
 | Leave tenant | `tenant(tenantId, actorId)` | none | Soft-deletes the actor's own active membership. |
@@ -53,10 +54,6 @@ No role change, removal or departure may leave the tenant without an active owne
 
 Emails are normalized in the domain (trimmed and lowercased) by a value object before they are persisted or compared. The database keeps a plain unique constraint on the stored value, which is correct only because every write goes through that normalization.
 
-### Entering the tenant
-
-A unit of work that starts in a platform context has no tenant, yet the owner membership and the audit entry of a new tenant are tenant-scoped rows. So the Transactor offers one operation, entering a tenant, which re-applies the tenant setting for the rest of the transaction. Create tenant uses it once, for the tenant it has just inserted, and no other use case may. With it the normal row-level policies apply without special cases, and `tenant.created` is written with the new tenant, so it appears in that tenant's own trail.
-
 ### Memberships table
 
 ```
@@ -75,18 +72,18 @@ A removed membership is kept; a user who returns gets a new row.
 
 ### Audited actions
 
-`user.signed_up`, `tenant.created`, `membership.created`, `membership.role_changed`, `membership.removed`, `membership.left`. Every one is written with its tenant except `user.signed_up`, which has none. `tenant.created` is written after the new tenant has been entered, so it appears in that tenant's own trail; the membership actions run in the tenant's context.
+`membership.role_changed`, `membership.removed`, `membership.left`, all written in the tenant's context. Signing up and creating a tenant, owner membership included, are platform actions outside any tenant and are not audited; a tenant's trail starts with what happens inside it.
 
 ### Current state
 
-The three tables exist. `memberships` already has the shape above (its own `id`, `removed_at` and the partial unique index on active memberships), created by the second platform migration. Domain, use cases and repositories for this slice are not implemented, and the tables have no row-level policy yet. The Transactor operation that enters a tenant exists and is covered by the Transactor's real-database check.
+The three tables exist. `memberships` already has the shape above (its own `id`, `removed_at` and the partial unique index on active memberships), created by the second platform migration. Domain, use cases and repositories for this slice are not implemented, and the tables have no row-level policy yet.
 
 ## Invariants
 
 - A tenant always has at least one active owner. Several owners may coexist.
 - Every operation that changes a tenant's memberships locks that tenant's row (`SELECT ... FOR UPDATE` on `platform.tenants`) before reading the current owners, so two concurrent changes cannot each see another owner and both remove one.
 - A tenant and its creator's owner membership are created in one transaction; neither exists without the other.
-- A unit of work can enter a tenant only through Create tenant, once, and only for the tenant it has just created.
+- Signing up and creating a tenant write no audit entry.
 - At most one active membership exists per tenant and user.
 - Removing or leaving never deletes a membership row; it sets `removed_at`.
 - Admission considers only active memberships; a removed member is not admitted.
@@ -95,7 +92,8 @@ The three tables exist. `memberships` already has the shape above (its own `id`,
 
 ## Deferred / Open questions
 
-- How admission reads memberships once row-level security covers the platform tables: admission runs before the tenant is trusted, so it may need a dedicated read path. Decided in roadmap phase 8.
+- How admission reads memberships once row-level security covers the platform tables: admission runs before the tenant is trusted, so it may need a dedicated read path. Decided in the roadmap's row-level security phase.
+- How Create tenant inserts the owner membership once `memberships` has its row-level policy: the run has no tenant, so a policy comparing the row's tenant with the transaction's would reject it. Candidates: an insert policy that admits the founding owner (the actor, for a tenant created in the same transaction), or declaring the new tenant's id when the run starts. Decided in the same phase; nothing fails before it, because the table has no policy yet.
 - The name of the core bounded-context folder for this slice (two-word kebab-case per the layering rule). Decided when the domain is implemented.
 - Renaming, suspending or deleting a tenant. Not specced until a slice needs it.
 
@@ -105,7 +103,7 @@ Integration tests against a real PostgreSQL, using vitest once it is introduced:
 
 - Sign-up stores the email trimmed and lowercased; signing up with a case or whitespace variant of an existing email fails.
 - Creating a tenant yields the tenant and exactly one `owner` membership for the creator; a failure after inserting the tenant leaves neither.
-- Creating a tenant writes `tenant.created` with the new tenant, and the owner can read it in that tenant's trail; a use case other than Create tenant cannot enter a tenant.
+- Signing up and creating a tenant leave no entry in the audit trail.
 - The last owner cannot be demoted, removed or leave.
 - Two owners concurrently demoting each other: exactly one succeeds, and the tenant keeps one owner.
 - An admin cannot change roles, cannot remove an owner or admin, and can remove a member.
@@ -115,4 +113,4 @@ Integration tests against a real PostgreSQL, using vitest once it is introduced:
 
 ---
 
-Last updated: 2026-10-15.
+Last updated: 2026-10-16.

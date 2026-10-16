@@ -77,7 +77,7 @@ Design only: there is no model, migration or code for customers yet.
 - A deleted customer is invisible by default and is never edited or sold to.
 - A customer is never physically deleted, because orders reference it.
 - Deleting a customer never alters or hides its orders.
-- Every customer belongs to exactly one tenant, and a tenant cannot see or modify another tenant's customers (row-level security, roadmap phase 8).
+- Every customer belongs to exactly one tenant, and a tenant cannot see or modify another tenant's customers (row-level security, added in its roadmap phase).
 - Name and email are never empty after trimming.
 
 ## Deferred / Open questions
@@ -104,4 +104,4 @@ Integration tests against a real PostgreSQL, using vitest once it is introduced:
 
 ---
 
-Last updated: 2026-10-15.
+Last updated: 2026-10-16.

@@ -122,7 +122,7 @@ The account is one row per tenant, and every sale credit updates it inside the c
 - There is one account per tenant.
 - Concurrent movements never overspend.
 - A failed movement leaves no entry and no balance change.
-- A tenant cannot read or move another tenant's wallet (row-level security, roadmap phase 8).
+- A tenant cannot read or move another tenant's wallet (row-level security, added in its roadmap phase).
 
 ## Deferred / Open questions
 
@@ -153,4 +153,4 @@ Integration tests against a real PostgreSQL, using vitest once it is introduced:
 
 ---
 
-Last updated: 2026-10-15.
+Last updated: 2026-10-16.

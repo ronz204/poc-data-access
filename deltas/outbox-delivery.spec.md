@@ -135,9 +135,9 @@ Integration tests against a real PostgreSQL and Redis, using vitest once it is i
 - The relayer cannot update `messaging.idempotency` or any column of an event other than the delivery columns; the application role cannot update or delete events.
 - A graceful shutdown finishes the current batch.
 - The consumer processes each event id once and handles a duplicate delivery without a second effect.
-- The relayer sees events of every tenant, while the application role sees only its own tenant's (row-level security, roadmap phase 8).
+- The relayer sees events of every tenant, while the application role sees only its own tenant's (row-level security, added in its roadmap phase).
 - A restart of Redis with append-only persistence enabled keeps the accepted jobs.
 
 ---
 
-Last updated: 2026-10-15.
+Last updated: 2026-10-16.
