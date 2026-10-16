@@ -28,21 +28,24 @@ The order and reasoning behind building the project. Why the project exists is i
 
 ## Roadmap
 
-Phase 0 is done; every other phase is pending.
+Phases 0 and 1 are done; every other phase is pending. Each phase names the slices it builds.
 
 0. **Base infrastructure** - compose file and bootstrap scripts creating schemas, roles and grants.
 1. **Base migrations and Transactor** - first migrations, the Transactor on the DI container, tenant context set per transaction.
-2. **Repositories and product CRUD** - write repositories with soft delete.
-3. **Basic checkout** - order, items and stock in one transaction.
-4. **Concurrency** - parallel-load tests and comparison of the three stock strategies.
-5. **Idempotency** - idempotency key on checkout.
-6. **Outbox** - event insert in the checkout transaction, the polling worker, Redis in the compose file, and the BullMQ queue with its consumer.
-7. **Wallet** - accounts and ledger.
-8. **Row-level security** - policies and isolation tests run as the application role. Introduced after the problem is visible, not at the start.
-9. **Audit trail** - recorder driven by the Transactor context.
-10. **Read models** - joins, reporting views and keyset pagination over about a million seeded rows, compared with offset using query plans.
-11. **Refactor** - extract stock into an inventory schema with an expand then contract migration.
-12. **HTTP surface (planned)** - Elysia routes over the use cases: idempotency header, simulated tenant and actor context, zod validation at the boundary, error mapping.
+2. **Identity** (tenant-onboarding, member-invitation) - users, tenants, memberships and invitations; admission; the Transactor operation that enters a tenant. Everything after this needs a tenant and an actor.
+3. **Catalog and customers** (product-catalog, customer-records) - write repositories with soft delete and explicit restore, versioned product edits, categories.
+4. **Basic checkout** (order-checkout) - order, items and stock in one transaction, with the conditional atomic update as the stock strategy.
+5. **Concurrency** - parallel-load tests and the three interchangeable stock strategies compared.
+6. **Idempotency** (idempotency-keys) - the idempotency wrapper, required on checkout.
+7. **Outbox** (outbox-delivery) - event insert in the checkout transaction, the polling worker, Redis in the compose file, and the BullMQ queue with its consumer.
+8. **Wallet** (wallet-ledger) - accounts, ledger, the sale credit inside checkout and the owner movements.
+9. **Audit trail** (audit-recording) - recorder driven by the Transactor context, applied to the actions of every earlier slice, and the trail read.
+10. **Row-level security** - policies and isolation tests run as the application role, including the dedicated read paths. Introduced after the problem is visible, not at the start.
+11. **Read models** (sales-reporting) - joins, reporting views and keyset pagination over about a million seeded rows, compared with offset using query plans.
+12. **Refactor** (stock-inventory) - extract stock into an inventory schema with an expand then contract migration.
+13. **HTTP surface (planned)** (http-surface) - Elysia routes over the use cases: idempotency header, simulated tenant and actor context, zod validation at the boundary, error mapping.
+
+Checkout grows by steps. Phase 4 builds the validation, the stock reservation and the order; idempotency, the outbox event, the wallet credit and the audit entry are added by their own phases, and the acceptance criteria that mention them are checked then. Slices built before the audit and row-level-security phases gain their audit calls and policies when those phases land. The slices sales-reporting, stock-inventory and http-surface have no spec yet.
 
 ## Risks
 

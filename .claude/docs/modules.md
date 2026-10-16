@@ -14,6 +14,7 @@ Functional reference for the components the project builds. Only the Transactor 
 3. It opens a DI scope bound to that transaction, with the transaction-bound executor and the context, and resolves the entry service from it, so repositories and queries receive the executor instead of opening their own.
 4. On success the audit entries and outbox events recorded during the unit of work commit together with the business changes; on failure everything rolls back. Driver errors leave the Transactor classified as persistence errors.
 5. A run never nests: a use case that needs several writes calls the Transactor once and passes the unit of work down.
+6. A unit of work that starts without a tenant can enter a tenant once, which re-applies the tenant setting for the rest of the transaction. Only creating a tenant does this, for the tenant it has just inserted, so that its own rows and audit entry pass the normal policies.
 
 **Data shape.**
 ```

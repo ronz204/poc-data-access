@@ -53,6 +53,7 @@ The full policy lives in `.claude/settings.json`. Reading environment and secret
 
 - Code, identifiers and runtime messages are in English; scoped rules live in `.claude/rules/`: layering of bounded contexts, transaction ownership, schema-qualified names, list pagination, input validation, delta editing and scope.
 - Changes to anything in the knowledge base go through the matching skill, not by hand.
+- `ROADMAP.md` at the repo root tracks build progress, one step per phase of the approach.
 - `approach.md` and `auditrail.md` at the repo root are personal scratch notes, not part of the knowledge base. `auditrail.md` describes an earlier implementation that no longer exists.
 
 ---

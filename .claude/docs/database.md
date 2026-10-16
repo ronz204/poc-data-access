@@ -11,7 +11,7 @@ Postgres schemas are split by bounded context, not by table type, so the namespa
 | Schema | Tables | Notes |
 |---|---|---|
 | `platform` | `tenants`, `users`, `memberships`, `invitations`, `trailer` | Identity and tenancy. `tenants` is the root and carries no row-level policy. `invitations` lets a tenant invite an email address, which may not belong to a user yet. `trailer` is the append-only audit trail; candidate for monthly partitioning. |
-| `catalog` | `products`, `categories` | `products` has soft delete, stock and a version column. Owner of stock. |
+| `catalog` | `products`, `categories` | `products` has soft delete, stock and two version counters, one for its data and one for its stock. Owner of stock. |
 | `sales` | `customers`, `orders`, `items` | `customers` has soft delete. `items` snapshots product name and price. |
 | `wallet` | `accounts`, `entries` | `entries` is an immutable ledger. |
 | `messaging` | `events`, `idempotency` | `events` is the outbox, with delivery and retry state (delivered time, attempts, next attempt time, last error, failed time). `idempotency` stores key, request hash and response. |
@@ -24,14 +24,14 @@ All objects are referenced with their schema. The migration journal lives in its
 | Role | Purpose | Used by |
 |---|---|---|
 | `sampler` | Owns every schema and object; creates and migrates. Holds `CREATE` on the database because the migration tool always issues `CREATE SCHEMA IF NOT EXISTS` for its journal schema, and PostgreSQL checks that privilege before checking whether the schema exists. As the table owner it skips row-level security, so it is never used to read or write application data. | Migration tooling only |
-| `runner` | Reads and writes platform, catalog, sales and messaging; select and insert only on wallet; select on `reporting`. Subject to row-level security. | Application reads and writes |
-| `relayer` | Select and update on messaging only. Created with `BYPASSRLS` because it claims events across all tenants. | Outbox worker |
+| `runner` | Select, insert and update on platform, catalog, sales and messaging, with delete only on the catalog categories; select and insert on wallet, plus a column-level update on the account balance; select on `reporting`. Subject to row-level security. | Application reads and writes |
+| `relayer` | Reads outbox events and updates only their delivery columns, through a column-level grant; nothing else in messaging. Created with `BYPASSRLS` because it claims events across all tenants. | Outbox worker |
 
-The split prevents the application from altering schema, rewriting history (audit, ledger) or escaping tenant isolation. Privileges are granted as default privileges of `sampler` per schema, so every table a migration creates is covered automatically; a table that needs more than its schema default (for example `wallet.accounts`, which is updated) gets an explicit grant in its own migration. Functions are not executable by `PUBLIC` by default, so a function used by policies needs an explicit execute grant. A table owner skips row-level security, and tables deliberately do not use `FORCE ROW LEVEL SECURITY`: the only role that owns objects is the migration role, which never operates on application data, so forcing would add nothing. The guarantee rests on the application connecting only as `runner`, the one role the policies filter, so the isolation test must connect as it.
+The split prevents the application from altering schema, rewriting history (audit, ledger) or escaping tenant isolation. Privileges are granted as default privileges of `sampler` per schema, so every table a migration creates is covered automatically. The defaults give `runner` select, insert and update and never delete; a table that needs more (hard delete on the catalog categories, the balance update on `wallet.accounts`) or less (outbox events) gets an explicit grant or revoke in its own migration. Tables that must not change once written are also covered only by select and insert policies, so even where an update privilege exists no row can be updated or deleted. Functions are not executable by `PUBLIC` by default, so a function used by policies needs an explicit execute grant. A table owner skips row-level security, and tables deliberately do not use `FORCE ROW LEVEL SECURITY`: the only role that owns objects is the migration role, which never operates on application data, so forcing would add nothing. The guarantee rests on the application connecting only as `runner`, the one role the policies filter, so the isolation test must connect as it.
 
 Tenant isolation: every transaction sets `app.tenant`, `app.actor` and `app.origin` locally, and each tenant-scoped table has a policy comparing its `tenant_id` to `current_setting('app.tenant')` (an empty setting reads as `NULL`, so it never matches). Policies are declared next to the table definition and generated into migrations with it.
 
-The audit trail lives in `platform`, whose default grants include update and delete, so its append-only guarantee comes from its policies rather than from grants: `runner` has a select policy (rows of the current tenant) and an insert policy (tenant, actor and origin must equal the transaction settings), and no update or delete policy.
+The audit trail lives in `platform`, whose default grants include update, so its append-only guarantee comes from its policies rather than from grants: `runner` has a select policy (rows of the current tenant) and an insert policy (tenant, actor and origin must equal the transaction settings), and no update or delete policy.
 
 ## Data model
 
@@ -45,7 +45,7 @@ Columns, types, keys and foreign keys are modeled in `drizzle/DIAGRAM.md`; this 
 - Every tenant-scoped row carries `tenant_id` and is covered by a row-level policy.
 - Foreign keys across schemas exist only toward `platform.tenants` and from `sales.items` to `catalog.products`. Wallet, messaging and audit refer to their origin by type and id with no foreign key, keeping them decoupled.
 - Stock never goes negative, whichever concurrency strategy is used.
-- Wallet entries and audit entries are never updated or deleted: wallet through its schema's grants, the audit trail through its row-level policies.
+- Wallet entries, audit entries, orders and order items are never updated or deleted: wallet entries through their schema's grants, the others through row-level policies that allow select and insert only.
 - An outbox event is committed if and only if the change that produced it committed.
 - An event is claimed only while it is undelivered, not failed and due; a delivered or failed event is never claimed again.
 - One idempotency key maps to at most one stored outcome per tenant (unique constraint).
