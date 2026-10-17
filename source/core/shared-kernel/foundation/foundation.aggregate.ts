@@ -19,6 +19,12 @@ export interface Restorable<S> {
 	restore<T>(this: { readonly prototype: T }, state: S): T;
 }
 
+export type Patch<S extends EntityState<unknown>> = Partial<Omit<S, "id">>;
+
+function idOf(entity: object): unknown {
+	return (entity as EntityState<unknown>).id;
+}
+
 export function Entity<S extends EntityState<unknown>>() {
 	abstract class StateEntity {
 		constructor(state: S) {
@@ -32,22 +38,14 @@ export function Entity<S extends EntityState<unknown>>() {
 		}
 
 		sameAs(other: StateEntity): boolean {
-			return this.constructor === other.constructor && this.state.id === other.state.id;
+			return this.constructor === other.constructor && idOf(this) === idOf(other);
 		}
 
-		protected with(patch: Partial<S>): this {
+		protected with(patch: Patch<S>): this {
 			const Self = this.constructor as new (state: S) => this;
-			return new Self({ ...this.state, ...patch });
-		}
-
-		private get state(): S {
-			return this as unknown as S;
+			return new Self({ ...(this as unknown as S), ...patch });
 		}
 	}
 
 	return StateEntity as unknown as (abstract new (state: S) => StateEntity & Readonly<S>) & Restorable<S>;
-}
-
-export function Aggregate<S extends EntityState<unknown>>() {
-	return Entity<S>();
 }

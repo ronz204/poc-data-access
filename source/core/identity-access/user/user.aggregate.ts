@@ -1,4 +1,4 @@
-import { Aggregate, type Email, type EntityState, type UserId } from "@core/shared-kernel";
+import { type Email, Entity, type EntityState, type UserId } from "@core/shared-kernel";
 import type { UserName } from "./user.vos";
 
 export interface UserState extends EntityState<UserId> {
@@ -7,13 +7,9 @@ export interface UserState extends EntityState<UserId> {
 	readonly createdAt: Date;
 }
 
-export interface UserSignUpInput {
-	readonly id: UserId;
-	readonly email: Email;
-	readonly name: UserName;
-}
+export type UserSignUpInput = Omit<UserState, "createdAt">;
 
-export class User extends Aggregate<UserState>() {
+export class User extends Entity<UserState>() {
 	private constructor(state: UserState) {
 		super(state);
 	}

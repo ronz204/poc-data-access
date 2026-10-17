@@ -7,9 +7,8 @@ export abstract class DomainError<C extends string = string> extends Error {
 		readonly code: C,
 		message: string,
 		readonly details: ErrorDetails = {},
-		cause?: unknown,
 	) {
-		super(message, { cause });
+		super(message);
 		this.name = new.target.name;
 	}
 

@@ -18,6 +18,11 @@ class Widget extends Entity<WidgetState>() {
 	relabel(label: string): Widget {
 		return label === this.label ? this : this.with({ label });
 	}
+
+	reidentify(id: string): Widget {
+		// @ts-expect-error the identity is not part of a patch
+		return this.with({ id });
+	}
 }
 
 class Gadget extends Entity<WidgetState>() {}
