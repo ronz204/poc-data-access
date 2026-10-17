@@ -64,7 +64,7 @@ All under `/v1`, grouped by resource. Ids are UUID strings and timestamps are IS
 | Audit | `GET /audit-trail` |
 | Reports | `GET /reports/sales-by-product-month`, `GET /reports/top-customers`, `GET /reports/low-stock`, `POST /reports/sales-by-product-month/refresh` |
 
-Operational routes sit outside `/v1` and need no context: `GET /health/live`, `GET /health/ready`, and the OpenAPI document at `GET /v1/openapi.json`. (Assumed path.)
+Operational routes sit outside the versioned routes and need no context: `GET /health`, which answers while the process is up with the service name and `healthy`, the documentation page at `GET /docs`, and the OpenAPI document at `GET /v1/openapi.json`. (Assumed paths.) A readiness check against the stores is not part of the contract until the outbox brings Redis in.
 
 `PATCH /products/{id}` carries the expected version in the body as `expectedVersion`. (Assumed default.) Status codes are, by default: 201 with a `Location` header on create, 200 on read, update and action, 204 on delete and soft delete. A throttled report refresh returns 200 with the current `as_of`.
 
@@ -78,7 +78,7 @@ Operational routes sit outside `/v1` and need no context: `GET /health/live`, `G
 
 ### Errors
 
-Every error is `application/problem+json` with `type`, `title`, `status`, `detail`, a stable `code` (the code of the domain error or the mapping of the persistence error) and the request id. It carries the structured extensions that the owning spec defines, such as the lines lacking stock, the available balance and the validation issues per field. The mapping is fixed. (Assumed defaults.)
+Every error is `application/problem+json` with `status`, `detail`, a stable `code` (the code of the domain error or the mapping of the persistence error) and the request id. It carries the structured extensions that the owning spec defines, such as the lines lacking stock, the available balance and the validation issues per field. The mapping is fixed. (Assumed defaults.)
 
 | Situation | Status and code |
 |---|---|
@@ -129,7 +129,7 @@ A separate entry point, apart from the outbox worker and the queue consumer. Con
 
 ### Current state
 
-The Elysia application exists as its own process entry point. It assigns or echoes `X-Request-Id`, logs one structured line per request, maps validation, unknown routes, shared-kernel domain errors and persistence errors to problem+json, and lets each bounded context's plugin map its own domain errors. It serves `GET /health/live`, `GET /health/ready` (PostgreSQL only; the Redis check arrives with the outbox) and the OpenAPI document at `GET /v1/openapi.json`. It enforces the body limit and idle timeout, and on shutdown it stops the server and then closes the pool. The only business route so far is `POST /v1/users` (sign up). Not built yet: the tenant and platform context headers, admission, the idempotency header, the pagination envelope and the HTTP tests. Routes are added slice by slice as each use case lands. When the stock refactor reaches its contract step, the stock routes are served by inventory.
+The Elysia application exists as its own process entry point. It assigns or echoes `X-Request-Id`, logs one structured line per request, maps validation, unknown routes and shared-kernel domain errors to problem+json, and lets each bounded context's plugin map its own domain errors. Any other failure, the persistence ones included, answers 500 `internal_error` and is logged. The plugins are assembled in the process entry point. It serves `GET /health`, the documentation page at `GET /docs` and the OpenAPI document at `GET /v1/openapi.json`. It enforces the body limit and idle timeout, and on shutdown it stops the server and then closes the pool. The only business route so far is `POST /v1/users` (sign up). Not built yet: the `Retry-After` mapping of contention and unavailable persistence, tenant and actor in the request log, the tenant and platform context headers, admission, the idempotency header, the pagination envelope and the HTTP tests. Routes are added slice by slice as each use case lands. When the stock refactor reaches its contract step, the stock routes are served by inventory.
 
 ## Invariants
 
@@ -171,7 +171,7 @@ Tests over the application handler against a real PostgreSQL and Redis, using vi
 - Money outside the safe integers is rejected.
 - `X-Request-Id` is echoed or generated and present in problem bodies.
 - Every route appears in the OpenAPI document with its request, response and error schemas under `/v1`; a test enumerates the routes.
-- `GET /health/live` is up; `GET /health/ready` fails when PostgreSQL or Redis is unreachable.
+- `GET /health` reports the service name and `healthy`.
 - A graceful shutdown completes a request in flight.
 - Accept invitation ignores tenant and actor headers.
 - Logs contain no invitation token and no idempotency key.

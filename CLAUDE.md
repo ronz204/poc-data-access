@@ -24,7 +24,7 @@ Built so far: the database provisioning, the base migrations, the Transactor, th
 | `source/app/` | Use cases, one folder per bounded context, each with its own dockey and HTTP plugin |
 | `source/repos/` | Drizzle repository implementations (write side) and CQRS-lite read queries, mirroring core: one folder per bounded context and sub-slice, each repository beside its mapper |
 | `source/keys/` | Dockdi dockeys (`*.dockey.ts`) for infrastructure concerns shared across contexts, such as the database and the Transactor |
-| `source/infra/` | Plumbing: the HTTP service plugins (request tracing, problem+json failures, health, OpenAPI) and, later, the worker |
+| `source/infra/` | Plumbing: `plugins/` holds the HTTP plugins (request tracing, problem+json errors, health, API docs), each independent of the others, and, later, the worker |
 | `testing/` | Vitest tests: `modules/` mirrors `source/` one test file per source file, `utilities/` holds the shared test harness |
 | `drizzle/dal/` | Data-access layer, including the Transactor |
 | `drizzle/database/` | Drizzle schema definitions per Postgres schema, policies, helpers |
@@ -32,7 +32,7 @@ Built so far: the database provisioning, the base migrations, the Transactor, th
 | `docker/data/` | PostgreSQL compose file and bootstrap scripts for roles, stores, schemas, grants |
 | `docker/bull/` | Redis compose file, server configuration and ACL users for the BullMQ queue |
 | `docker/*/secrets/` | Secrets of each docker service; real files are git-ignored, only the `*.sample` files are committed |
-| `cmd/` | Process entry points and composition roots (`service.boot.ts` for HTTP) |
+| `cmd/` | Process entry points and composition roots (`service.boot.ts` for HTTP, which also assembles the plugins) |
 
 Import aliases for these folders are defined in `tsconfig.json`.
 
@@ -45,7 +45,7 @@ Import aliases for these folders are defined in `tsconfig.json`.
 | Stop both | `bun run db:down` |
 | Recreate the databases from scratch | `bun run db:reset`; the bootstrap scripts only run on an empty volume, so a change to roles or grants needs it |
 | Run the unit tests | `bun run test`; `bun run test:watch` re-runs on change |
-| Run the HTTP service | `bun run service`; listens on `SERVICE_PORT` (default 3000), OpenAPI document at `/v1/openapi.json` |
+| Run the HTTP service | `bun run service`; listens on `SERVICE_PORT` (default 3000), documentation page at `/docs`, OpenAPI document at `/v1/openapi.json` |
 | Apply migrations | `bunx drizzle-kit migrate` (needs `POSTGRES_SAMPLER_URL`) |
 | Generate a migration from the models | `bunx drizzle-kit generate --name <name>` |
 
