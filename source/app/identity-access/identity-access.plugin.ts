@@ -1,4 +1,4 @@
-import { Problem, type StatusMap } from "@infra/plugins/http.problem";
+import { domainProblem, type StatusMap } from "@infra/plugins/errors.plugin";
 import { signUpUserPlugin } from "./sign-up-user/sign-up-user.plugin";
 import type { Transactor } from "@dal/dal.transactor";
 import { UserError } from "@core/identity-access";
@@ -9,6 +9,6 @@ const USER_STATUSES: StatusMap<UserError["code"]> = { invalid_name: 422, email_t
 export const identityAccessPlugin = (transactor: Transactor) =>
 	new Elysia({ detail: { tags: ["Identity"] } })
 		.onError({ as: "scoped" }, ({ error, set }) => {
-			if (error instanceof UserError) return Problem.domain(set, error, USER_STATUSES);
+			if (error instanceof UserError) return domainProblem(set, error, USER_STATUSES);
 		})
 		.use(signUpUserPlugin(transactor));
