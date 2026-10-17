@@ -1,5 +1,5 @@
-import { Entity, type EntityState, type TenantId, type UserId } from "@core/shared-kernel";
-import type { MembershipId, MembershipRole } from "./membership.vos";
+import { Entity, type EntityState, type MembershipRole, type TenantId, type UserId } from "@core/shared-kernel";
+import type { MembershipId } from "./membership.vos";
 
 export interface MembershipState extends EntityState<MembershipId> {
 	readonly tenantId: TenantId;

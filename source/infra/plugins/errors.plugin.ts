@@ -1,4 +1,4 @@
-import { DomainError, PrimitiveError } from "@core/shared-kernel";
+import { AdmissionError, DomainError, PrimitiveError } from "@core/shared-kernel";
 import { Elysia, type ValidationError } from "elysia";
 import { REQUEST_ID_HEADER } from "./tracing.plugin";
 
@@ -14,6 +14,8 @@ const PRIMITIVE_STATUSES: StatusMap<PrimitiveError["code"]> = {
 	invalid_literal: 422,
 	invalid_email: 422,
 };
+
+const ADMISSION_STATUSES: StatusMap<AdmissionError["code"]> = { not_a_member: 403 };
 
 export function problem(
 	scope: ProblemScope,
@@ -58,6 +60,7 @@ export class ErrorsPlugin {
 			}
 
 			if (error instanceof PrimitiveError) return domainProblem(set, error, PRIMITIVE_STATUSES);
+			if (error instanceof AdmissionError) return domainProblem(set, error, ADMISSION_STATUSES);
 			if (error instanceof DomainError) return;
 
 			console.error(

@@ -1,6 +1,6 @@
-import { Membership, MembershipId, MembershipRole } from "@core/identity-access";
+import { Membership, MembershipId } from "@core/identity-access";
 import type { memberships } from "@db/models/platform/memberships.model";
-import { TenantId, UserId } from "@core/shared-kernel";
+import { MembershipRole, TenantId, UserId } from "@core/shared-kernel";
 
 type MembershipRow = typeof memberships.$inferSelect;
 

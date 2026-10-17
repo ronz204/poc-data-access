@@ -1,4 +1,6 @@
 import type { IMembershipRepository, ITenantRepository, IUserRepository } from "@core/identity-access";
+import { AdmissionQuery } from "@repos/identity-access/membership/admission.query";
+import { AdmitActorHandler } from "@app/identity-access/admit-actor/admit-actor.handler";
 import { ChangeMemberRoleHandler } from "@app/identity-access/change-member-role/change-member-role.handler";
 import { MembershipRepository } from "@repos/identity-access/membership/membership.repository";
 import { CreateTenantHandler } from "@app/identity-access/create-tenant/create-tenant.handler";
@@ -15,6 +17,8 @@ export class IdentityAccessDockey {
 	static readonly UserRepository = token<IUserRepository>("UserRepository");
 	static readonly TenantRepository = token<ITenantRepository>("TenantRepository");
 	static readonly MembershipRepository = token<IMembershipRepository>("MembershipRepository");
+	static readonly AdmissionQuery = token(AdmissionQuery);
+	static readonly AdmitActor = token(AdmitActorHandler);
 	static readonly SignUpUser = token(SignUpUserHandler);
 	static readonly CreateTenant = token(CreateTenantHandler);
 	static readonly ChangeMemberRole = token(ChangeMemberRoleHandler);
@@ -26,6 +30,11 @@ export class IdentityAccessDockey {
 			container.bind(IdentityAccessDockey.UserRepository).toClass(UserRepository, [DataDockey.Executor]);
 			container.bind(IdentityAccessDockey.TenantRepository).toClass(TenantRepository, [DataDockey.Executor]);
 			container.bind(IdentityAccessDockey.MembershipRepository).toClass(MembershipRepository, [DataDockey.Executor]);
+			container.bind(IdentityAccessDockey.AdmissionQuery).toClass(AdmissionQuery, [DataDockey.Executor]);
+			container.bind(IdentityAccessDockey.AdmitActor).toClass(AdmitActorHandler, [
+				IdentityAccessDockey.AdmissionQuery,
+				DataDockey.Context,
+			]);
 			container.bind(IdentityAccessDockey.SignUpUser).toClass(SignUpUserHandler, [
 				IdentityAccessDockey.UserRepository,
 				SystemDockey.Clock,

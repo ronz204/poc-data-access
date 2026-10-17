@@ -1,3 +1,7 @@
+export * from "./admission/admission.contracts";
+export * from "./admission/admission.errors";
+export * from "./admission/admission.policies";
+export * from "./admission/admission.vos";
 export * from "./foundation/foundation.aggregate";
 export * from "./foundation/foundation.errors";
 export * from "./foundation/foundation.events";

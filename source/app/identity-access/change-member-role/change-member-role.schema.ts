@@ -1,5 +1,4 @@
-import { MembershipRole } from "@core/identity-access";
-import { UserId } from "@core/shared-kernel";
+import { MembershipRole, UserId } from "@core/shared-kernel";
 import { z } from "zod";
 
 export const ChangeMemberRoleInput = z.object({
