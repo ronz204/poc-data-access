@@ -1,5 +1,5 @@
 import { IdentityAccessDockey } from "@app/identity-access/identity-access.dockey";
-import { identityAccessPlugin } from "@app/identity-access/identity-access.plugin";
+import { IdentityAccessPlugin } from "@app/identity-access/identity-access.plugin";
 import { ScalarsPlugin } from "@infra/plugins/scalars.plugin";
 import { TracingPlugin } from "@infra/plugins/tracing.plugin";
 import { HealthPlugin } from "@infra/plugins/health.plugin";
@@ -21,7 +21,7 @@ const service = new Elysia()
 	.use(ErrorsPlugin.create())
 	.use(ScalarsPlugin.create(env.SERVICE_NAME))
 	.use(HealthPlugin.create(env.SERVICE_NAME))
-	.group("/v1", (v1) => v1.use(identityAccessPlugin(transactor)))
+	.group("/v1", (v1) => v1.use(IdentityAccessPlugin.create(transactor)))
 	.listen({
 		port: env.SERVICE_PORT,
 		maxRequestBodySize: MEBIBYTE,
