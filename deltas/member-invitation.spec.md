@@ -73,7 +73,20 @@ Generated server-side with high entropy and returned in clear only by Invite. On
 
 ### Current state
 
-The table exists from the platform base migration with the columns and indexes above. Domain, use cases and repositories are not implemented, and the table has no row-level policy yet.
+The table exists from the platform base migration with the columns and indexes above. The domain, the use cases and the repositories are implemented in the `identity-access` context.
+
+The invitation sub-slice holds the aggregate (issued pending, expiring seven days after creation; accepted only while pending and unexpired; revoked only while pending), `InvitationId`, `InvitationRole` (`admin` or `member`, never `owner`), `InvitationStatus`, `TokenHash` (a lowercase sha-256 digest), the invite, revoke and list permission matrix as a policy, and `InvitationError` with the codes `invalid_token_hash`, `insufficient_role`, `already_member`, `invitation_pending`, `invitation_invalid`, `invitation_not_found`, `not_pending` and `name_required`. The token is generated and hashed by two injected system functions: 32 random bytes in base64url, and a sha-256 hex digest.
+
+Each use case has its own folder:
+
+- Invite member runs in the tenant context. It checks the matrix, refuses an email with an active membership, refuses a pending unexpired invitation, revokes an expired pending one before inserting the new one, and returns the token once. A concurrent duplicate is caught by the partial unique index and surfaces as `invitation_pending`.
+- Locate invite finds the tenant of the invitation behind a token hash and runs without a tenant.
+- Accept invite runs in a system context scoped to the tenant. It locks the tenant row, re-reads the invitation by hash, requires it pending and unexpired, reuses the user for the email or creates one from the given name (`name_required` otherwise), refuses an active member, inserts the membership and marks the invitation accepted, all in one run.
+- Revoke invite and List invites work as the contract describes. The list is for owner and admin, keyset-paginated by `(created_at, id)` with a page size of at most 100 (default 20), an opaque cursor, and a result of `items` plus `nextCursor`.
+
+Locate and accept are two separate runs because the tenant is unknown until the token is found; composing them belongs to the http-endpoints entry. The shared kernel gained a pagination sub-slice (cursor encoding, the page shape, the page size bounds and `invalid_cursor`, mapped to 422).
+
+None of this is exposed over HTTP or audited yet. The use cases are unit-tested with in-memory repositories; the list query and the repositories have no test of their own. The table has no row-level policy yet.
 
 ## Invariants
 

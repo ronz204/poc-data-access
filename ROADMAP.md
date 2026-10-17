@@ -6,13 +6,13 @@ Build progress of poc-persists-data, one step per phase of the approach; not a c
 
 ## Overview
 
-**Overall progress: 17 / 78 tasks — 22%**
+**Overall progress: 18 / 78 tasks — 23%**
 
 | # | Step | Status | Progress |
 |---|---|---|---|
 | 0 | [Base infrastructure](#0--base-infrastructure) | ✅ Done | 4/4 — 100% |
 | 1 | [Base migrations and Transactor](#1--base-migrations-and-transactor) | ✅ Done | 5/5 — 100% |
-| 2 | [Identity](#2--identity) | 🔄 In progress | 5/7 — 71% |
+| 2 | [Identity](#2--identity) | 🔄 In progress | 6/7 — 86% |
 | 3 | [Catalog and customers](#3--catalog-and-customers) | 🔲 Not started | 0/5 — 0% |
 | 4 | [Basic checkout](#4--basic-checkout) | 🔲 Not started | 0/5 — 0% |
 | 5 | [Concurrency](#5--concurrency) | 🔲 Not started | 0/6 — 0% |
@@ -57,7 +57,7 @@ Slices: tenant-onboarding, member-invitation. Everything after this needs a tena
 - [x] Create tenant: tenant and owner membership atomically
 - [x] Member management: change role, remove, leave, with last-owner protection under the tenant lock
 - [x] Admission use case and read model
-- [ ] Invitations: invite, accept, revoke, list
+- [x] Invitations: invite, accept, revoke, list
 - [ ] Real-database tests: last owner under concurrent demotions, single-use invitation under concurrent accepts
 
 ## 3 — Catalog and customers
