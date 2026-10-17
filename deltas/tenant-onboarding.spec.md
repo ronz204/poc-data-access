@@ -80,7 +80,9 @@ The three tables exist. `memberships` already has the shape above (its own `id`,
 
 Create tenant is implemented in the same context: the `Tenant` and `Membership` aggregates (with `TenantName`, `MembershipId`, `MembershipRole`, `TenantError` `invalid_name` and `MembershipError` `user_not_found`), their repositories, and the create-tenant handler. It runs under `platform(actorId)`, takes the owner from the run's context rather than the input, and inserts the tenant before the owner membership in one transaction. An unknown actor fails the membership's user foreign key and surfaces as `user_not_found`. It is not exposed over HTTP yet: the route needs the `X-Actor-Id` platform context, which belongs to the http-endpoints slice. It is unit-tested with in-memory repositories; the real-database acceptance tests (a failure leaves neither row, no audit entry) are still pending.
 
-The other use cases are not implemented yet, and the tables have no row-level policy yet.
+Change role, remove member and leave tenant are implemented too. The permission matrix lives in a core membership policy: only an owner may change roles; an owner may remove anyone and an admin only a `member`; a separate check refuses to drop the tenant's last active owner. Each handler runs under `tenant(tenantId, actorId)` and first locks the tenant row (`SELECT ... FOR UPDATE`), then loads the actor's and the target's active memberships, applies the policy and counts the active owners before writing; a role change to the same role skips the write. They fail with `not_a_member` (the actor), `member_not_found` (the target), `insufficient_role` or `last_owner` from the membership error, and `tenant_not_found` from the tenant error. They are not exposed over HTTP yet (they need the tenant headers and admission from the http-endpoints slice) and not audited yet (the audit-recording slice). They are unit-tested with in-memory repositories; the real-database concurrency tests (two owners demoting each other) are still pending.
+
+Admission is not implemented yet, and the tables have no row-level policy yet.
 
 ## Invariants
 
