@@ -5,7 +5,7 @@ paths:
 
 # Bounded Context Layering Conventions
 
-This governs the internal folder and file layout of every bounded context under `source/core/`, following a DDD tactical layering organized by semantic sub-slice: each bounded context is split into the cohesive concepts it holds, not into technical layers. It applies to every bounded context there, including the one holding primitives shared across the others.
+This governs the internal folder and file layout of every bounded context under `source/core/` (how each building block is written is a separate rule), following a DDD tactical layering organized by semantic sub-slice: each bounded context is split into the cohesive concepts it holds, not into technical layers. It applies to every bounded context there, including the one holding primitives shared across the others.
 
 ---
 
@@ -81,24 +81,9 @@ source/core/
 - A contract is written in the domain's language (a report, a version, a fencing token), never a technology's (a connection, a queue option, a script). The test for where an interface belongs is who consumes it. If core or the application layer consumes it, it is a contract and lives here. If only adapters consume it and it speaks a technology's vocabulary, it is not a contract: it lives beside those adapters, and core never declares it. Declaring it here would make core depend on a technology.
 - When a contract's signature starts needing a technology's vocabulary, split it into a domain-language contract here and an adapter-internal interface in infrastructure, instead of letting the technology leak inward.
 
-## Domain errors
+## Building blocks
 
-- Every domain error extends the shared kernel's base domain error and carries a stable `snake_case` code. Error codes are part of the API's stable contract, so the HTTP layer maps a code to a status and a client-facing code without knowing each error class, and renaming a class or rewording a message never breaks a client.
-- Each sub-slice has one error class, not one class per failure. It is declared by extending the class the base error's `define` factory returns for a map of code to message, and its code type is derived from the class, so the two can never drift. A status map keyed by that union is checked for exhaustiveness: a new code without a status fails to compile.
-- The message is fixed per code, stays in English, and never interpolates a value. Variable data (a limit, a current state, a permission name) travels in the error's structured details. A fixed message keeps error monitoring grouping one failure as one issue, and keeps user-supplied values and document or case content out of logs.
-
-## Value objects
-
-- A value object is a branded primitive, built on the shared kernel's brand type, with a same-named constant object that holds its parser and any behavior. Its only constructor is the parser, which normalizes, validates, and raises the sub-slice's domain error. The brand keeps two string-backed concepts from being swapped silently, while equality stays `===` and the value serializes and maps to a column with no wrapping or unwrapping.
-- Identifiers follow the same shape through the shared kernel's identifier factory, one declaration per id kind. A closed set of literals (a role, a status, a kind) follows it too, through the shared kernel's literal-set factory, which gives every set the same `values`, `is`, and `parse`; a set whose rejection is part of the API contract passes its own error to the factory. A bare constant array beside a hand-written guard is not used, because every set would grow its own shape. A class-based value object with a wrapped field and an `equals` method is not used: it adds an unwrap at every boundary and an equality method that the brand already gives for free.
-
-## Aggregates
-
-- An aggregate extends the shared kernel's aggregate base, typed by a named state interface. The base assigns the state and freezes the instance, so the fields are `readonly` both in the type system and at runtime, and the aggregate never repeats its field list in a constructor, a getter, or a serializer.
-- The constructor is private and takes the whole state object, never positional arguments. Positional constructors let two arguments of the same type swap silently. Creation goes through intention-named factories that all take `(input, now)`, a named input object plus the clock, and reconstitution goes through a `restore` factory that trusts its input, because the persistence mapper already parsed every field.
-- No getters and no snapshot method. A field is read directly, the state is the instance itself, and a derived fact is a method whose name says it computes (`isActive()`), not a getter that looks like a stored field.
-- A state-changing operation returns a new instance built from a copy of the current state plus a patch, through the patch method the aggregate base provides, never a mutation of the receiver and never a hand-written copy per aggregate. A caller still holding the old instance keeps a value that stays valid. An operation that leaves the state unchanged may return the receiver itself, so a caller can skip the write by identity.
-- An operation that raises a domain event returns that event alongside the new instance and never publishes it itself. The aggregate can't know whether its change will commit, so only the caller, which owns the transaction, can record the event safely, in the same transaction as the change.
+- How each tactical piece is written (value objects, identifiers, literal sets, errors, entities, aggregates, events) is its own convention, in the domain building-blocks rule, so this file stays about where things live and that one about how they are shaped.
 
 ---
 
