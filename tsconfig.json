@@ -2,6 +2,7 @@
 	"include": [
     "cmd/**/*",
     "source/**/*",
+    "testing/**/*",
     "drizzle/**/*",
     "**.config.ts",
   ],
@@ -46,6 +47,8 @@
 			"@core/*": ["./source/core/*"],
 			"@infra/*": ["./source/infra/*"],
       "@repos/*": ["./source/repos/*"],
+
+			"@testing/*": ["./testing/*"],
 
 			"@dal/*": ["./drizzle/dal/*"],
 			"@db/*": ["./drizzle/database/*"],
