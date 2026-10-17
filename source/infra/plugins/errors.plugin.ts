@@ -6,16 +6,7 @@ export type StatusMap<C extends string> = Readonly<Record<C, number>>;
 
 export interface ProblemScope {
 	readonly headers: Readonly<Record<string, unknown>>;
-	status?: unknown;
 }
-
-const PRIMITIVE_STATUSES: StatusMap<PrimitiveError["code"]> = {
-	invalid_identifier: 422,
-	invalid_literal: 422,
-	invalid_email: 422,
-};
-
-const ADMISSION_STATUSES: StatusMap<AdmissionError["code"]> = { not_a_member: 403 };
 
 export function problem(
 	scope: ProblemScope,
@@ -24,7 +15,6 @@ export function problem(
 	detail: string,
 	extensions?: Readonly<Record<string, unknown>>,
 ): Response {
-	scope.status = status;
 	const body = { status, code, detail, requestId: scope.headers[REQUEST_ID_HEADER], ...extensions };
 	return new Response(JSON.stringify(body), {
 		status,
@@ -41,8 +31,27 @@ export function domainProblem<C extends string>(
 	return problem(scope, statuses[error.code], error.code, error.message, details);
 }
 
+const SHARED_STATUSES: StatusMap<PrimitiveError["code"] | AdmissionError["code"]> = {
+	invalid_identifier: 422,
+	invalid_literal: 422,
+	invalid_email: 422,
+	not_a_member: 403,
+};
+
 function issuesOf(error: Readonly<ValidationError>) {
 	return error.all.map((issue) => ({ path: String(issue.path ?? ""), message: issue.message }));
+}
+
+function logFailure(requestId: unknown, error: unknown): void {
+	console.error(
+		JSON.stringify({
+			level: "error",
+			event: "http.failure",
+			requestId,
+			name: error instanceof Error ? error.name : typeof error,
+			message: error instanceof Error ? error.message : String(error),
+		}),
+	);
 }
 
 export class ErrorsPlugin {
@@ -59,19 +68,12 @@ export class ErrorsPlugin {
 					return problem(set, 404, "not_found", "the route does not exist");
 			}
 
-			if (error instanceof PrimitiveError) return domainProblem(set, error, PRIMITIVE_STATUSES);
-			if (error instanceof AdmissionError) return domainProblem(set, error, ADMISSION_STATUSES);
-			if (error instanceof DomainError) return;
+			if (error instanceof PrimitiveError || error instanceof AdmissionError) {
+				return domainProblem(set, error, SHARED_STATUSES);
+			}
 
-			console.error(
-				JSON.stringify({
-					level: "error",
-					event: "http.failure",
-					requestId: set.headers[REQUEST_ID_HEADER],
-					name: error instanceof Error ? error.name : typeof error,
-					message: error instanceof Error ? error.message : String(error),
-				}),
-			);
+			if (error instanceof DomainError) return;
+			logFailure(set.headers[REQUEST_ID_HEADER], error);
 			return problem(set, 500, "internal_error", "the request could not be completed");
 		});
 	}
