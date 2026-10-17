@@ -133,6 +133,10 @@ describe("Email", () => {
 		expectDomainError(() => Email.parse(value), "invalid_email");
 	});
 
+	it("raises a PrimitiveError", () => {
+		expect(() => Email.parse("plain")).toThrow(PrimitiveError);
+	});
+
 	it("enforces the 254 character maximum", () => {
 		const domain = "@example.com";
 		const atLimit = `${"a".repeat(254 - domain.length)}${domain}`;

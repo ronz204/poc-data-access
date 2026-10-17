@@ -1,4 +1,4 @@
-import { DomainError, EmailError, PrimitiveError } from "@core/shared-kernel";
+import { DomainError, PrimitiveError } from "@core/shared-kernel";
 import { PersistenceError, type PersistenceErrorKind } from "@dal/dal.exceptions";
 import { Problem, type ProblemScope, type StatusMap } from "./http.problem";
 import { Elysia, type ValidationError } from "elysia";
@@ -9,9 +9,11 @@ interface RetryableProblem {
 	readonly retryAfter: number;
 }
 
-const EMAIL_STATUSES: StatusMap<EmailError["code"]> = { invalid_email: 422 };
-
-const PRIMITIVE_STATUSES: StatusMap<PrimitiveError["code"]> = { invalid_identifier: 422, invalid_literal: 422 };
+const PRIMITIVE_STATUSES: StatusMap<PrimitiveError["code"]> = {
+	invalid_identifier: 422,
+	invalid_literal: 422,
+	invalid_email: 422,
+};
 
 const RETRYABLE: Partial<Readonly<Record<PersistenceErrorKind, RetryableProblem>>> = {
 	contention: { status: 409, code: "contention", retryAfter: 1 },
@@ -56,7 +58,6 @@ export const failuresPlugin = new Elysia({ name: "failures" }).onError({ as: "gl
 			return Problem.respond(set, { status: 404, code: "not_found", detail: "the route does not exist" });
 	}
 
-	if (error instanceof EmailError) return Problem.domain(set, error, EMAIL_STATUSES);
 	if (error instanceof PrimitiveError) return Problem.domain(set, error, PRIMITIVE_STATUSES);
 	if (error instanceof DomainError) return;
 

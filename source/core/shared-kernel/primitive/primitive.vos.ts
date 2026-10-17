@@ -86,3 +86,11 @@ export function literalsOf<const K extends string, const L extends string>(
 		is,
 	});
 }
+
+export const Email = textOf("Email", {
+	max: 254,
+	pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+	normalize: (value) => value.toLowerCase(),
+	fail: () => new PrimitiveError("invalid_email"),
+});
+export type Email = Infer<typeof Email>;
