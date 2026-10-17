@@ -76,7 +76,11 @@ A removed membership is kept; a user who returns gets a new row.
 
 ### Current state
 
-The three tables exist. `memberships` already has the shape above (its own `id`, `removed_at` and the partial unique index on active memberships), created by the second platform migration. The bounded context is `identity-access`. Sign up is implemented (the `User` aggregate, the shared-kernel `Email` value object, the user repository and the use case) and exposed as `POST /v1/users`, with a duplicate email answered as 409 `email_taken` and an invalid email or name as 422; the other use cases are not implemented yet, and the tables have no row-level policy yet.
+The three tables exist. `memberships` already has the shape above (its own `id`, `removed_at` and the partial unique index on active memberships), created by the second platform migration. The bounded context is `identity-access`. Sign up is implemented (the `User` aggregate, the shared-kernel `Email` value object, the user repository and the use case) and exposed as `POST /v1/users`, with a duplicate email answered as 409 `email_taken` and an invalid email or name as 422.
+
+Create tenant is implemented in the same context: the `Tenant` and `Membership` aggregates (with `TenantName`, `MembershipId`, `MembershipRole`, `TenantError` `invalid_name` and `MembershipError` `user_not_found`), their repositories, and the create-tenant handler. It runs under `platform(actorId)`, takes the owner from the run's context rather than the input, and inserts the tenant before the owner membership in one transaction. An unknown actor fails the membership's user foreign key and surfaces as `user_not_found`. It is not exposed over HTTP yet: the route needs the `X-Actor-Id` platform context, which belongs to the http-endpoints slice. It is unit-tested with in-memory repositories; the real-database acceptance tests (a failure leaves neither row, no audit entry) are still pending.
+
+The other use cases are not implemented yet, and the tables have no row-level policy yet.
 
 ## Invariants
 
