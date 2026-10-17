@@ -1,7 +1,7 @@
 import { LeaveTenantHandler } from "@app/identity-access/leave-tenant/leave-tenant.handler";
 import { asActor, seedTenant, TENANT, userOf } from "@testing/utilities/membership.fixtures";
 import { describe, expect, it } from "vitest";
-import type { MembershipRole } from "@core/identity-access";
+import type { MembershipRole } from "@core/shared-kernel";
 
 const NOW = new Date("2026-02-01T00:00:00.000Z");
 

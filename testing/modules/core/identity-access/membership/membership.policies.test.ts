@@ -1,5 +1,5 @@
-import { Membership, MembershipId, MembershipPolicy, type MembershipRole } from "@core/identity-access";
-import { TenantId, UserId } from "@core/shared-kernel";
+import { Membership, MembershipId, MembershipPolicy } from "@core/identity-access";
+import { type MembershipRole, TenantId, UserId } from "@core/shared-kernel";
 import { describe, expect, it } from "vitest";
 
 const NOW = new Date("2026-01-01T00:00:00.000Z");

@@ -1,5 +1,5 @@
 import { UserError } from "@core/identity-access";
-import { UserId } from "@core/shared-kernel";
+import { AdmissionError, UserId } from "@core/shared-kernel";
 import { domainProblem, ErrorsPlugin, type StatusMap } from "@infra/plugins/errors.plugin";
 import { TracingPlugin } from "@infra/plugins/tracing.plugin";
 import { call, captureLogs, postJson } from "@testing/utilities/http.harness";
@@ -22,6 +22,9 @@ const app = new Elysia()
 	.use(ErrorsPlugin.create())
 	.post("/echo", ({ body }) => body, { body: z.object({ name: z.string(), age: z.number() }) })
 	.get("/bad-id", () => UserId.parse("nope"))
+	.get("/not-a-member", () => {
+		throw new AdmissionError("not_a_member");
+	})
 	.get("/boom", () => {
 		throw new Error("select * from secrets where password = 'hunter2'");
 	})
@@ -74,6 +77,12 @@ describe("ErrorsPlugin", () => {
 		const reply = await call(app, "/bad-id");
 		expect(reply.status).toBe(422);
 		expect(reply.body).toMatchObject({ code: "invalid_identifier", details: { kind: "UserId" } });
+	});
+
+	it("answers 403 for an actor that is not a member of the tenant", async () => {
+		const reply = await call(app, "/not-a-member");
+		expect(reply.status).toBe(403);
+		expect(reply.body).toMatchObject({ code: "not_a_member" });
 	});
 
 	it("maps a context domain error through its own scoped handler", async () => {

@@ -2,7 +2,7 @@ import { ChangeMemberRoleHandler } from "@app/identity-access/change-member-role
 import { toChangeMemberRoleCommand } from "@app/identity-access/change-member-role/change-member-role.schema";
 import { asActor, seedTenant, TENANT, userOf } from "@testing/utilities/membership.fixtures";
 import { describe, expect, it } from "vitest";
-import type { MembershipRole } from "@core/identity-access";
+import type { MembershipRole } from "@core/shared-kernel";
 import { RunContext } from "@dal/dal.contexter";
 
 const change = (n: number, role: string) => toChangeMemberRoleCommand({ userId: userOf(n), role });

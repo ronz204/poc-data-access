@@ -2,7 +2,7 @@ import { RemoveMemberHandler } from "@app/identity-access/remove-member/remove-m
 import { toRemoveMemberCommand } from "@app/identity-access/remove-member/remove-member.schema";
 import { asActor, SEED_TIME, seedTenant, TENANT, userOf } from "@testing/utilities/membership.fixtures";
 import { describe, expect, it } from "vitest";
-import type { MembershipRole } from "@core/identity-access";
+import type { MembershipRole } from "@core/shared-kernel";
 
 const NOW = new Date("2026-02-01T00:00:00.000Z");
 const remove = (n: number) => toRemoveMemberCommand({ userId: userOf(n) });

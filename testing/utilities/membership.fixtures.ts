@@ -1,6 +1,6 @@
-import { Membership, MembershipId, type MembershipRole, Tenant, TenantName } from "@core/identity-access";
+import { Membership, MembershipId, Tenant, TenantName } from "@core/identity-access";
 import { InMemoryMembershipRepository, InMemoryTenantRepository } from "./tenant.memory";
-import { TenantId, UserId } from "@core/shared-kernel";
+import { type MembershipRole, TenantId, UserId } from "@core/shared-kernel";
 import { RunContext } from "@dal/dal.contexter";
 
 export const SEED_TIME = new Date("2026-01-01T00:00:00.000Z");

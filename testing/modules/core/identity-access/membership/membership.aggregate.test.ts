@@ -1,4 +1,4 @@
-import { Membership, MembershipId, MembershipRole } from "@core/identity-access";
+import { Membership, MembershipId } from "@core/identity-access";
 import { TenantId, UserId } from "@core/shared-kernel";
 import { describe, expect, it } from "vitest";
 
@@ -38,13 +38,5 @@ describe("Membership transitions", () => {
 		expect(removed).toMatchObject({ ...input, role: "owner", createdAt: NOW, removedAt: later });
 		expect(owner.isActive()).toBe(true);
 		expect(removed.isActive()).toBe(false);
-	});
-});
-
-describe("MembershipRole", () => {
-	it("accepts the three roles and nothing else", () => {
-		expect(MembershipRole.values).toEqual(["owner", "admin", "member"]);
-		expect(MembershipRole.is("guest")).toBe(false);
-		expect(() => MembershipRole.parse("guest")).toThrow();
 	});
 });

@@ -46,6 +46,11 @@ describe("IdentityAccessDockey", () => {
 		);
 	});
 
+	it("resolves the admission handler with its query", () => {
+		const { scope } = runScope();
+		expect(scope.resolve(modules.identity.IdentityAccessDockey.AdmitActor)).toBeDefined();
+	});
+
 	it("resolves the member-management handlers", () => {
 		const { scope } = runScope();
 		const { ChangeMemberRole, RemoveMember, LeaveTenant } = modules.identity.IdentityAccessDockey;
