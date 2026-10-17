@@ -1,7 +1,7 @@
 import type { IMembershipRepository, ITenantRepository, IUserRepository } from "@core/identity-access";
 import { AdmissionQuery } from "@repos/identity-access/membership/admission.query";
 import { AdmitActorHandler } from "@app/identity-access/admit-actor/admit-actor.handler";
-import { ChangeMemberRoleHandler } from "@app/identity-access/change-member-role/change-member-role.handler";
+import { ChangeRoleHandler } from "@app/identity-access/change-role/change-role.handler";
 import { MembershipRepository } from "@repos/identity-access/membership/membership.repository";
 import { CreateTenantHandler } from "@app/identity-access/create-tenant/create-tenant.handler";
 import { RemoveMemberHandler } from "@app/identity-access/remove-member/remove-member.handler";
@@ -21,7 +21,7 @@ export class IdentityAccessDockey {
 	static readonly AdmitActor = token(AdmitActorHandler);
 	static readonly SignUpUser = token(SignUpUserHandler);
 	static readonly CreateTenant = token(CreateTenantHandler);
-	static readonly ChangeMemberRole = token(ChangeMemberRoleHandler);
+	static readonly ChangeRole = token(ChangeRoleHandler);
 	static readonly RemoveMember = token(RemoveMemberHandler);
 	static readonly LeaveTenant = token(LeaveTenantHandler);
 
@@ -47,7 +47,7 @@ export class IdentityAccessDockey {
 				SystemDockey.Clock,
 				SystemDockey.NewId,
 			]);
-			container.bind(IdentityAccessDockey.ChangeMemberRole).toClass(ChangeMemberRoleHandler, [
+			container.bind(IdentityAccessDockey.ChangeRole).toClass(ChangeRoleHandler, [
 				IdentityAccessDockey.TenantRepository,
 				IdentityAccessDockey.MembershipRepository,
 				DataDockey.Context,

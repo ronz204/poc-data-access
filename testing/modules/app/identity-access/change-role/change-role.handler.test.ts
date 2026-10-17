@@ -1,19 +1,19 @@
-import { ChangeMemberRoleHandler } from "@app/identity-access/change-member-role/change-member-role.handler";
-import { toChangeMemberRoleCommand } from "@app/identity-access/change-member-role/change-member-role.schema";
+import { ChangeRoleHandler } from "@app/identity-access/change-role/change-role.handler";
+import { toChangeRoleCommand } from "@app/identity-access/change-role/change-role.schema";
 import { asActor, seedTenant, TENANT, userOf } from "@testing/utilities/membership.fixtures";
 import { describe, expect, it } from "vitest";
 import type { MembershipRole } from "@core/shared-kernel";
 import { RunContext } from "@dal/dal.contexter";
 
-const change = (n: number, role: string) => toChangeMemberRoleCommand({ userId: userOf(n), role });
+const change = (n: number, role: string) => toChangeRoleCommand({ userId: userOf(n), role });
 
 function setup(roles: Record<number, MembershipRole>, actor: number | RunContext = 1) {
 	const { tenants, memberships } = seedTenant(roles);
 	const context = typeof actor === "number" ? asActor(actor) : actor;
-	return { tenants, memberships, handler: new ChangeMemberRoleHandler(tenants, memberships, context) };
+	return { tenants, memberships, handler: new ChangeRoleHandler(tenants, memberships, context) };
 }
 
-describe("ChangeMemberRoleHandler", () => {
+describe("ChangeRoleHandler", () => {
 	it("lets an owner change a member's role and returns the updated membership", async () => {
 		const { handler, memberships } = setup({ 1: "owner", 2: "member" });
 		const view = await handler.execute(change(2, "admin"));

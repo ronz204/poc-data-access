@@ -1,18 +1,18 @@
 import { MembershipRole, UserId } from "@core/shared-kernel";
 import { z } from "zod";
 
-export const ChangeMemberRoleInput = z.object({
+export const ChangeRoleInput = z.object({
 	userId: z.string().max(36),
 	role: z.string().max(20),
 });
-export type ChangeMemberRoleInput = z.infer<typeof ChangeMemberRoleInput>;
+export type ChangeRoleInput = z.infer<typeof ChangeRoleInput>;
 
-export interface ChangeMemberRoleCommand {
+export interface ChangeRoleCommand {
 	readonly userId: UserId;
 	readonly role: MembershipRole;
 }
 
-export const toChangeMemberRoleCommand = (input: ChangeMemberRoleInput): ChangeMemberRoleCommand => ({
+export const toChangeRoleCommand = (input: ChangeRoleInput): ChangeRoleCommand => ({
 	userId: UserId.parse(input.userId),
 	role: MembershipRole.parse(input.role),
 });

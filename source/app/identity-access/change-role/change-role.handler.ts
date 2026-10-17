@@ -1,17 +1,17 @@
 import { type IMembershipRepository, type ITenantRepository, MembershipError, MembershipPolicy, TenantError } from "@core/identity-access";
 import { AdmissionError } from "@core/shared-kernel";
-import type { ChangeMemberRoleCommand } from "./change-member-role.schema";
+import type { ChangeRoleCommand } from "./change-role.schema";
 import { type MembershipView, toMembershipView } from "../identity-access.views";
 import type { RunContext } from "@dal/dal.contexter";
 
-export class ChangeMemberRoleHandler {
+export class ChangeRoleHandler {
 	constructor(
 		private readonly tenants: ITenantRepository,
 		private readonly memberships: IMembershipRepository,
 		private readonly context: RunContext,
 	) {}
 
-	async execute(command: ChangeMemberRoleCommand): Promise<MembershipView> {
+	async execute(command: ChangeRoleCommand): Promise<MembershipView> {
 		const tenantId = this.context.tenant;
 		if (!(await this.tenants.lock(tenantId))) throw new TenantError("tenant_not_found");
 

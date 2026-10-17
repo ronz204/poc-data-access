@@ -53,8 +53,8 @@ describe("IdentityAccessDockey", () => {
 
 	it("resolves the member-management handlers", () => {
 		const { scope } = runScope();
-		const { ChangeMemberRole, RemoveMember, LeaveTenant } = modules.identity.IdentityAccessDockey;
-		expect(scope.resolve(ChangeMemberRole)).toBeDefined();
+		const { ChangeRole, RemoveMember, LeaveTenant } = modules.identity.IdentityAccessDockey;
+		expect(scope.resolve(ChangeRole)).toBeDefined();
 		expect(scope.resolve(RemoveMember)).toBeDefined();
 		expect(scope.resolve(LeaveTenant)).toBeDefined();
 	});
