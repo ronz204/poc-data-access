@@ -1,23 +1,24 @@
+import type { DomainError } from "../foundation/foundation.errors";
 import { PrimitiveError } from "./primitive.errors";
 
 declare const brand: unique symbol;
 
 export type Brand<T, B extends string> = T & { readonly [brand]: B };
 
-export type Uuid<B extends string> = Brand<string, B>;
-
-export interface BrandKind<T, B extends string> {
+export interface BrandKind<B extends string> {
 	readonly kind: B;
-	parse(value: T): Brand<T, B>;
-	is(value: unknown): value is Brand<T, B>;
+	parse(value: string): Brand<string, B>;
+	is(value: unknown): value is Brand<string, B>;
 }
 
-export interface LiteralKind<L extends string> {
-	readonly kind: string;
+export interface LiteralKind<K extends string, L extends string> {
+	readonly kind: K;
 	readonly values: readonly L[];
 	parse(value: string): L;
 	is(value: unknown): value is L;
 }
+
+export type Infer<K extends { parse(value: never): unknown }> = ReturnType<K["parse"]>;
 
 export type TextLimits = {
 	readonly minLength: number;
@@ -29,26 +30,26 @@ export interface TextRules {
 	readonly max: number;
 	readonly pattern?: RegExp;
 	readonly normalize?: (value: string) => string;
-	readonly fail: (limits: TextLimits) => Error;
+	readonly fail: (limits: TextLimits) => DomainError;
 }
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
-export function uuidOf<const B extends string>(kind: B): BrandKind<string, B> {
+export function uuidOf<const B extends string>(kind: B): BrandKind<B> {
 	return Object.freeze({
 		kind,
-		parse(value: string): Uuid<B> {
+		parse(value: string): Brand<string, B> {
 			const normalized = value.toLowerCase();
 			if (!UUID_PATTERN.test(normalized)) throw new PrimitiveError("invalid_identifier", { kind });
-			return normalized as Uuid<B>;
+			return normalized as Brand<string, B>;
 		},
-		is(value: unknown): value is Uuid<B> {
+		is(value: unknown): value is Brand<string, B> {
 			return typeof value === "string" && UUID_PATTERN.test(value);
 		},
 	});
 }
 
-export function textOf<const B extends string>(kind: B, rules: TextRules): BrandKind<string, B> {
+export function textOf<const B extends string>(kind: B, rules: TextRules): BrandKind<B> {
 	const limits: TextLimits = { minLength: rules.min ?? 1, maxLength: rules.max };
 	const normalize = (value: string) => (rules.normalize ? rules.normalize(value.trim()) : value.trim());
 	const valid = (value: string) =>
@@ -67,11 +68,11 @@ export function textOf<const B extends string>(kind: B, rules: TextRules): Brand
 	});
 }
 
-export function literalsOf<const L extends string>(
-	kind: string,
+export function literalsOf<const K extends string, const L extends string>(
+	kind: K,
 	values: readonly L[],
-	fail: () => Error = () => new PrimitiveError("invalid_literal", { kind }),
-): LiteralKind<L> {
+	fail: () => DomainError = () => new PrimitiveError("invalid_literal", { kind }),
+): LiteralKind<K, L> {
 	const allowed: ReadonlySet<string> = new Set(values);
 	const is = (value: unknown): value is L => typeof value === "string" && allowed.has(value);
 

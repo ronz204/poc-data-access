@@ -1,7 +1,7 @@
-import { type Uuid, uuidOf } from "@core/shared-kernel/primitive/primitive.vos";
+import { type Infer, uuidOf } from "../primitive/primitive.vos";
 
-export type UserId = Uuid<"UserId">;
 export const UserId = uuidOf("UserId");
+export type UserId = Infer<typeof UserId>;
 
-export type TenantId = Uuid<"TenantId">;
 export const TenantId = uuidOf("TenantId");
+export type TenantId = Infer<typeof TenantId>;

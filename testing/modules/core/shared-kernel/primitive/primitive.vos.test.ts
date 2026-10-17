@@ -1,4 +1,4 @@
-import { Email, literalsOf, PrimitiveError, textOf, uuidOf } from "@core/shared-kernel";
+import { DomainError, Email, literalsOf, PrimitiveError, textOf, uuidOf } from "@core/shared-kernel";
 import { expectDomainError } from "@testing/utilities/domain.assertions";
 import { describe, expect, it } from "vitest";
 
@@ -39,14 +39,7 @@ describe("uuidOf", () => {
 });
 
 describe("textOf", () => {
-	class TestTextError extends Error {
-		constructor(
-			message: string,
-			readonly limits?: unknown,
-		) {
-			super(message);
-		}
-	}
+	class TestTextError extends DomainError.define({ bad: "the value is not valid" }) {}
 
 	const Slug = textOf("Slug", {
 		min: 2,
@@ -68,7 +61,7 @@ describe("textOf", () => {
 			thrown = error;
 		}
 		expect(thrown).toBeInstanceOf(TestTextError);
-		expect((thrown as TestTextError).limits).toEqual({ minLength: 2, maxLength: 5 });
+		expect((thrown as TestTextError).details).toEqual({ minLength: 2, maxLength: 5 });
 	});
 
 	it.each(["", "   ", "a", "abcdef", "ab1"])("rejects %j", (value) => {
@@ -119,7 +112,7 @@ describe("literalsOf", () => {
 	});
 
 	it("uses the caller's error when given", () => {
-		class CustomError extends Error {}
+		class CustomError extends DomainError.define({ custom: "custom" }) {}
 		const Strict = literalsOf("Strict", ["a"], () => new CustomError("custom"));
 		expect(() => Strict.parse("b")).toThrow(CustomError);
 	});
