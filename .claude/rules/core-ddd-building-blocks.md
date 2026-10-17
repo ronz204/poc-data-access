@@ -14,20 +14,20 @@ This governs how each tactical DDD piece in the domain layer is written: value o
 
 | Piece | Built from | Shape it always has |
 |---|---|---|
-| Value object | The shared kernel's brand type plus its text factory (or a hand-written parser for a non-text value) | A branded type and a same-named constant with `kind`, `parse` and `is` |
+| Value object | The shared kernel's brand type plus its text factory (or a hand-written parser for a non-text value) | A same-named constant with `kind`, `parse` and `is`, and a branded type inferred from it |
 | Identifier | The shared kernel's identifier factory, one declaration per id kind | Same as a value object; ids are lowercase UUIDs |
 | Literal set | The shared kernel's literal-set factory | A constant with `kind`, `values`, `parse` and `is`, and a type derived from its values |
 | Domain error | The base domain error's `define` factory, one class per sub-slice | A closed set of `snake_case` codes with fixed messages |
 | Entity | The shared kernel's entity base, typed by a state interface that extends the base entity state | Frozen instance, `restore`, `sameAs`, protected `with` |
-| Aggregate | The shared kernel's aggregate base, same contract as the entity base | Same as an entity, plus intention-named creation factories |
+| Aggregate | The same entity base: a root is an entity, and there is no separate aggregate base | Same as an entity, plus intention-named creation factories |
 | Domain event | The shared kernel's domain event type | `type`, `aggregateId`, `occurredAt`, `payload` |
 
 A piece that seems to need a shape outside this table is a signal to extend the shared-kernel base once, for every context, not to hand-roll a variant in one sub-slice. A hand-rolled variant is how two aggregates end up with two different ways to rebuild from storage.
 
 ## Value objects, identifiers and literal sets
 
-- A value object is a branded primitive with a same-named constant holding its parser. The parser is its only constructor: it normalizes, validates and raises the sub-slice's domain error. The brand keeps two string-backed concepts from being swapped silently, while equality stays `===` and the value maps to a column with no wrapping.
-- A text value object is declared through the text factory with its bounds, an optional pattern and an optional normalization, and the error to raise, which receives the bounds as structured details. Trimming always happens first, so no value object re-implements it.
+- A value object is a branded primitive with a same-named constant holding its parser. The parser is its only constructor: it normalizes, validates and raises the sub-slice's domain error. The brand keeps two string-backed concepts from being swapped silently, while equality stays `===` and the value maps to a column with no wrapping. The type is inferred from the constant rather than written by hand, so the kind is declared once and the type cannot drift from its parser.
+- A text value object is declared through the text factory with its bounds, an optional pattern and an optional normalization, and the error to raise, which must be a domain error and receives the bounds as structured details. Trimming always happens first, so no value object re-implements it.
 - `is` is a pure guard: it accepts only a value already in normalized form, so a guard never reports `true` for a value `parse` would have changed.
 - A closed set of literals (a role, a status) goes through the literal-set factory, and its type is derived from the set's values, so the type and the runtime list can't drift. A set whose rejection is part of the API contract passes its own error to the factory; otherwise the shared kernel's invalid-literal error is raised.
 - A class-based value object with a wrapped field and an `equals` method is not used: it adds an unwrap at every boundary and an equality method the brand already gives for free.
@@ -47,7 +47,7 @@ A piece that seems to need a shape outside this table is a signal to extend the 
 - Reconstitution goes through the `restore` factory every entity and aggregate inherits from the base. It trusts its input, because the mapper already parsed every field; no aggregate writes its own.
 - Identity comparison goes through the inherited `sameAs`, which compares class and id, never through `===` on instances, because two restores of the same row are different objects that are the same entity.
 - No getters and no snapshot method. A field is read directly; a derived fact is a method whose name says it computes (`isActive()`).
-- A state-changing operation returns a new instance through the base's protected `with` patch, never a mutation of the receiver and never a hand-written copy. An operation that leaves the state unchanged may return the receiver itself, so a caller can skip the write by identity.
+- A state-changing operation returns a new instance through the base's protected `with` patch, never a mutation of the receiver and never a hand-written copy. A patch never carries the id, so no operation can change an entity's identity. An operation that leaves the state unchanged may return the receiver itself, so a caller can skip the write by identity.
 
 ## Domain events
 

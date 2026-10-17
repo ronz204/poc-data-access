@@ -25,6 +25,7 @@ Built so far: the database provisioning, the base migrations, the Transactor, th
 | `source/repos/` | Drizzle repository implementations (write side) and CQRS-lite read queries, mirroring core: one folder per bounded context and sub-slice, each repository beside its mapper |
 | `source/keys/` | Dockdi dockeys (`*.dockey.ts`) for infrastructure concerns shared across contexts, such as the database and the Transactor |
 | `source/infra/` | Plumbing: the HTTP service plugins (request tracing, problem+json failures, health, OpenAPI) and, later, the worker |
+| `testing/` | Vitest tests: `modules/` mirrors `source/` one test file per source file, `utilities/` holds the shared test harness |
 | `drizzle/dal/` | Data-access layer, including the Transactor |
 | `drizzle/database/` | Drizzle schema definitions per Postgres schema, policies, helpers |
 | `drizzle/migrations/` | Generated and hand-written migrations |
@@ -43,11 +44,12 @@ Import aliases for these folders are defined in `tsconfig.json`.
 | Start PostgreSQL and Redis | `bun run db:up`. First copy each sample to its real name: `docker/data/secrets/.env.sample` to `.env`, `docker/bull/secrets/users.acl.sample` to `users.acl` (replace every `change-me-*` with a real password) and the root `.env.sample` to `.env`, with the `bull` password also in `BULL_REDIS_URL` |
 | Stop both | `bun run db:down` |
 | Recreate the databases from scratch | `bun run db:reset`; the bootstrap scripts only run on an empty volume, so a change to roles or grants needs it |
+| Run the unit tests | `bun run test`; `bun run test:watch` re-runs on change |
 | Run the HTTP service | `bun run service`; listens on `SERVICE_PORT` (default 3000), OpenAPI document at `/v1/openapi.json` |
 | Apply migrations | `bunx drizzle-kit migrate` (needs `POSTGRES_SAMPLER_URL`) |
 | Generate a migration from the models | `bunx drizzle-kit generate --name <name>` |
 
-There is no test runner, linter, build or CI yet, and `package.json` defines no scripts for migrations.
+There is no linter, build or CI yet, and `package.json` defines no scripts for migrations.
 
 ## Permissions
 
