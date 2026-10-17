@@ -1,9 +1,8 @@
 import { z } from "zod";
 
 const schema = z.object({
-	POSTGRES_SAMPLER_URL: z.url(),
 	POSTGRES_RUNNER_URL: z.url(),
-	POSTGRES_RELAYER_URL: z.url(),
+	SERVICE_NAME: z.string().min(1).default("poc-persists-data"),
 	SERVICE_PORT: z.coerce.number().int().positive().default(3000),
 });
 
