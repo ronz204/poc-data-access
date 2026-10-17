@@ -61,11 +61,11 @@ describe("CreateTenantHandler", () => {
 	});
 
 	it("lets the membership failure through, so the run can roll the tenant back", async () => {
-		const failing: IMembershipRepository = {
+		const failing: IMembershipRepository = Object.assign(Object.create(memberships), {
 			insert: async () => {
 				throw new MembershipError("user_not_found");
 			},
-		};
+		});
 		await expect(build({ memberships: failing }).execute(command)).rejects.toMatchObject({ code: "user_not_found" });
 	});
 });

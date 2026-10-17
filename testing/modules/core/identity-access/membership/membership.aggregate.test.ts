@@ -17,6 +17,30 @@ describe("Membership", () => {
 	});
 });
 
+describe("Membership transitions", () => {
+	const owner = Membership.enrollOwner(input, NOW);
+
+	it("changes the role into a new instance, leaving the receiver untouched", () => {
+		const admin = owner.changeRole("admin");
+		expect(admin).not.toBe(owner);
+		expect(admin.role).toBe("admin");
+		expect(admin.sameAs(owner)).toBe(true);
+		expect(owner.role).toBe("owner");
+	});
+
+	it("returns the receiver when the role is unchanged", () => {
+		expect(owner.changeRole("owner")).toBe(owner);
+	});
+
+	it("removes by stamping removedAt, keeping everything else", () => {
+		const later = new Date("2026-02-01T00:00:00.000Z");
+		const removed = owner.remove(later);
+		expect(removed).toMatchObject({ ...input, role: "owner", createdAt: NOW, removedAt: later });
+		expect(owner.isActive()).toBe(true);
+		expect(removed.isActive()).toBe(false);
+	});
+});
+
 describe("MembershipRole", () => {
 	it("accepts the three roles and nothing else", () => {
 		expect(MembershipRole.values).toEqual(["owner", "admin", "member"]);

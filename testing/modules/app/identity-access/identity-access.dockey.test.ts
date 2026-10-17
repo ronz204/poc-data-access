@@ -46,6 +46,14 @@ describe("IdentityAccessDockey", () => {
 		);
 	});
 
+	it("resolves the member-management handlers", () => {
+		const { scope } = runScope();
+		const { ChangeMemberRole, RemoveMember, LeaveTenant } = modules.identity.IdentityAccessDockey;
+		expect(scope.resolve(ChangeMemberRole)).toBeDefined();
+		expect(scope.resolve(RemoveMember)).toBeDefined();
+		expect(scope.resolve(LeaveTenant)).toBeDefined();
+	});
+
 	it("builds a fresh handler per resolution, because it holds executor-bound repositories", () => {
 		const { scope } = runScope();
 		const token = modules.identity.IdentityAccessDockey.SignUpUser;
