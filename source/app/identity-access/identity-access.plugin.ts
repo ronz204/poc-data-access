@@ -1,4 +1,4 @@
-import { Problem, type StatusMap } from "@infra/http/http.problem";
+import { Problem, type StatusMap } from "@infra/plugins/http.problem";
 import { signUpUserPlugin } from "./sign-up-user/sign-up-user.plugin";
 import type { Transactor } from "@dal/dal.transactor";
 import { UserError } from "@core/identity-access";

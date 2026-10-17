@@ -1,5 +1,5 @@
 import { IdentityAccessDockey } from "@app/identity-access/identity-access.dockey";
-import { servicePlugin } from "@infra/http/service.plugin";
+import { servicePlugin } from "@infra/plugins/service.plugin";
 import { DataDockey } from "@keys/data.dockey";
 import { Container } from "dockdi";
 import { env } from "@env";
