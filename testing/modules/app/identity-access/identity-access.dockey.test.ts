@@ -1,4 +1,5 @@
 import type { RunExecutor } from "@dal/dal.transactor";
+import { RunContext } from "@dal/dal.contexter";
 import { UserId } from "@core/shared-kernel";
 import { Container } from "dockdi";
 import { beforeAll, describe, expect, it, vi } from "vitest";
@@ -8,6 +9,7 @@ type Modules = {
 	system: typeof import("@keys/system.dockey");
 	identity: typeof import("@app/identity-access/identity-access.dockey");
 	handler: typeof import("@app/identity-access/sign-up-user/sign-up-user.handler");
+	createTenant: typeof import("@app/identity-access/create-tenant/create-tenant.handler");
 };
 
 let modules: Modules;
@@ -19,6 +21,7 @@ beforeAll(async () => {
 		system: await import("@keys/system.dockey"),
 		identity: await import("@app/identity-access/identity-access.dockey"),
 		handler: await import("@app/identity-access/sign-up-user/sign-up-user.handler"),
+		createTenant: await import("@app/identity-access/create-tenant/create-tenant.handler"),
 	};
 });
 
@@ -26,6 +29,7 @@ function runScope() {
 	const container = new Container().load(modules.system.SystemDockey.module(), modules.identity.IdentityAccessDockey.module());
 	const scope = container.scope();
 	scope.bind(modules.data.DataDockey.Executor).toValue({} as RunExecutor);
+	scope.bind(modules.data.DataDockey.Context).toValue(RunContext.platform(UserId.parse("0192f3a4-5b6c-7d8e-9f01-23456789abc0")));
 	return { container, scope };
 }
 
@@ -33,6 +37,13 @@ describe("IdentityAccessDockey", () => {
 	it("resolves the sign-up handler inside a run scope", () => {
 		const { scope } = runScope();
 		expect(scope.resolve(modules.identity.IdentityAccessDockey.SignUpUser)).toBeInstanceOf(modules.handler.SignUpUserHandler);
+	});
+
+	it("resolves the create-tenant handler with the run's context", () => {
+		const { scope } = runScope();
+		expect(scope.resolve(modules.identity.IdentityAccessDockey.CreateTenant)).toBeInstanceOf(
+			modules.createTenant.CreateTenantHandler,
+		);
 	});
 
 	it("builds a fresh handler per resolution, because it holds executor-bound repositories", () => {
