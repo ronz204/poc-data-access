@@ -41,14 +41,13 @@
 		// Module resolution - Support for absolute imports
 		"paths": {
 			"@env": ["./source/env.ts"],
+			"@testing/*": ["./testing/*"],
 
 			"@app/*": ["./source/app/*"],
 			"@keys/*": ["./source/keys/*"],
 			"@core/*": ["./source/core/*"],
 			"@infra/*": ["./source/infra/*"],
       "@repos/*": ["./source/repos/*"],
-
-			"@testing/*": ["./testing/*"],
 
 			"@dal/*": ["./drizzle/dal/*"],
 			"@db/*": ["./drizzle/database/*"],
