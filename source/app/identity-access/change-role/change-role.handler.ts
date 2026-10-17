@@ -1,4 +1,4 @@
-import { type IMembershipRepository, type ITenantRepository, MembershipError, MembershipPolicy, TenantError } from "@core/identity-access";
+import { type IMembershipRepository, type ITenantRepository, MembershipError, MembershipPolicy } from "@core/identity-access";
 import { AdmissionError } from "@core/shared-kernel";
 import type { ChangeRoleCommand } from "./change-role.schema";
 import { type MembershipView, toMembershipView } from "../identity-access.views";
@@ -13,7 +13,7 @@ export class ChangeRoleHandler {
 
 	async execute(command: ChangeRoleCommand): Promise<MembershipView> {
 		const tenantId = this.context.tenant;
-		if (!(await this.tenants.lock(tenantId))) throw new TenantError("tenant_not_found");
+		await this.tenants.lock(tenantId);
 
 		const actor = await this.memberships.findActive(tenantId, this.context.actor);
 		if (!actor) throw new AdmissionError("not_a_member");
@@ -25,9 +25,7 @@ export class ChangeRoleHandler {
 		const next = target.changeRole(command.role);
 		if (next === target) return toMembershipView(target);
 
-		if (target.role === "owner") {
-			MembershipPolicy.assertKeepsOwner(target, await this.memberships.countActiveOwners(tenantId));
-		}
+		if (target.isOwner()) MembershipPolicy.assertKeepsOwner(target, await this.memberships.countActiveOwners(tenantId));
 
 		await this.memberships.update(next);
 		return toMembershipView(next);

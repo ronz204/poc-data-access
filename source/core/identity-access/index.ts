@@ -1,4 +1,5 @@
 export * from "./invitation/invitation.aggregate";
+export * from "./invitation/invitation.contracts";
 export * from "./invitation/invitation.errors";
 export * from "./invitation/invitation.policies";
 export * from "./invitation/invitation.repo";

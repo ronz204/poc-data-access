@@ -1,6 +1,7 @@
 import { type IMembershipRepository, type ITenantRepository, Membership, MembershipId, Tenant } from "@core/identity-access";
 import type { CreateTenantCommand, CreateTenantOutput } from "./create-tenant.schema";
 import type { Clock, NewId } from "@keys/system.dockey";
+import { toMembershipView } from "../identity-access.views";
 import type { RunContext } from "@dal/dal.contexter";
 import { TenantId } from "@core/shared-kernel";
 
@@ -28,7 +29,7 @@ export class CreateTenantHandler {
 			id: tenant.id,
 			name: tenant.name,
 			createdAt: tenant.createdAt.toISOString(),
-			ownerMembership: { id: owner.id, userId: owner.userId, role: owner.role },
+			ownerMembership: toMembershipView(owner),
 		};
 	}
 }

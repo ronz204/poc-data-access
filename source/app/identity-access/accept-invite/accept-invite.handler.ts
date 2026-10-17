@@ -2,16 +2,15 @@ import {
 	type IInvitationRepository,
 	type IMembershipRepository,
 	type ITenantRepository,
+	type ITokenVault,
 	type IUserRepository,
 	InvitationError,
 	Membership,
 	MembershipId,
-	TenantError,
-	TokenHash,
 	User,
 } from "@core/identity-access";
 import type { AcceptInviteCommand, AcceptInviteOutput } from "./accept-invite.schema";
-import type { Clock, HashToken, NewId } from "@keys/system.dockey";
+import type { Clock, NewId } from "@keys/system.dockey";
 import { UserId } from "@core/shared-kernel";
 import type { RunContext } from "@dal/dal.contexter";
 
@@ -24,16 +23,16 @@ export class AcceptInviteHandler {
 		private readonly context: RunContext,
 		private readonly now: Clock,
 		private readonly newId: NewId,
-		private readonly hashToken: HashToken,
+		private readonly tokens: ITokenVault,
 	) {}
 
 	async execute(command: AcceptInviteCommand): Promise<AcceptInviteOutput> {
 		const tenantId = this.context.tenant;
 		const now = this.now();
 
-		if (!(await this.tenants.lock(tenantId))) throw new TenantError("tenant_not_found");
+		await this.tenants.lock(tenantId);
 
-		const invitation = await this.invitations.findByTokenHash(TokenHash.parse(this.hashToken(command.token)));
+		const invitation = await this.invitations.findByTokenHash(this.tokens.hash(command.token));
 		if (!invitation || invitation.tenantId !== tenantId) throw new InvitationError("invitation_invalid");
 		const accepted = invitation.accept(now);
 

@@ -30,6 +30,10 @@ export class Membership extends Entity<MembershipState>() {
 		return this.removedAt === null;
 	}
 
+	isOwner(): boolean {
+		return this.role === "owner";
+	}
+
 	changeRole(role: MembershipRole): Membership {
 		return role === this.role ? this : this.with({ role });
 	}

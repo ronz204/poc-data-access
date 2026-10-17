@@ -1,4 +1,4 @@
-import { type IMembershipRepository, type ITenantRepository, MembershipPolicy, TenantError } from "@core/identity-access";
+import { type IMembershipRepository, type ITenantRepository, MembershipPolicy } from "@core/identity-access";
 import { AdmissionError } from "@core/shared-kernel";
 import { type MembershipView, toMembershipView } from "../identity-access.views";
 import type { RunContext } from "@dal/dal.contexter";
@@ -14,11 +14,11 @@ export class LeaveTenantHandler {
 
 	async execute(): Promise<MembershipView> {
 		const tenantId = this.context.tenant;
-		if (!(await this.tenants.lock(tenantId))) throw new TenantError("tenant_not_found");
+		await this.tenants.lock(tenantId);
 
 		const own = await this.memberships.findActive(tenantId, this.context.actor);
 		if (!own) throw new AdmissionError("not_a_member");
-		MembershipPolicy.assertKeepsOwner(own, await this.memberships.countActiveOwners(tenantId));
+		if (own.isOwner()) MembershipPolicy.assertKeepsOwner(own, await this.memberships.countActiveOwners(tenantId));
 
 		const left = own.remove(this.now());
 		await this.memberships.update(left);

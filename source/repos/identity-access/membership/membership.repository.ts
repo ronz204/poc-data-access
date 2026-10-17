@@ -2,9 +2,10 @@ import { type IMembershipRepository, type Membership, MembershipError } from "@c
 import { memberships } from "@db/models/platform/memberships.model";
 import type { RunExecutor } from "@dal/dal.transactor";
 import { ViolationTranslator } from "@dal/dal.translator";
-import type { TenantId, UserId } from "@core/shared-kernel";
+import type { Email, TenantId, UserId } from "@core/shared-kernel";
+import { users } from "@db/models/platform/users.model";
 import { MembershipMapper } from "./membership.mapper";
-import { and, count, eq, isNull } from "drizzle-orm";
+import { and, count, eq, getTableColumns, isNull } from "drizzle-orm";
 
 export class MembershipRepository implements IMembershipRepository {
 	constructor(private readonly executor: RunExecutor) {}
@@ -14,6 +15,16 @@ export class MembershipRepository implements IMembershipRepository {
 			.select()
 			.from(memberships)
 			.where(and(eq(memberships.tenantId, tenantId), eq(memberships.userId, userId), isNull(memberships.removedAt)))
+			.limit(1);
+		return row ? MembershipMapper.toDomain(row) : null;
+	}
+
+	async findActiveByEmail(tenantId: TenantId, email: Email): Promise<Membership | null> {
+		const [row] = await this.executor
+			.select(getTableColumns(memberships))
+			.from(memberships)
+			.innerJoin(users, eq(users.id, memberships.userId))
+			.where(and(eq(memberships.tenantId, tenantId), eq(users.email, email), isNull(memberships.removedAt)))
 			.limit(1);
 		return row ? MembershipMapper.toDomain(row) : null;
 	}

@@ -36,6 +36,7 @@ const SHARED_STATUSES: StatusMap<PrimitiveError["code"] | AdmissionError["code"]
 	invalid_literal: 422,
 	invalid_email: 422,
 	not_a_member: 403,
+	insufficient_role: 403,
 	invalid_cursor: 422,
 };
 

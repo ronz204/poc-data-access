@@ -1,4 +1,5 @@
 import { TenantName } from "@core/identity-access";
+import { MembershipView } from "../identity-access.views";
 import { z } from "zod";
 
 export const CreateTenantInput = z.object({
@@ -18,6 +19,6 @@ export const CreateTenantOutput = z.object({
 	id: z.uuid(),
 	name: z.string(),
 	createdAt: z.iso.datetime(),
-	ownerMembership: z.object({ id: z.uuid(), userId: z.uuid(), role: z.string() }),
+	ownerMembership: MembershipView,
 });
 export type CreateTenantOutput = z.infer<typeof CreateTenantOutput>;

@@ -1,4 +1,4 @@
-import { type IMembershipRepository, type ITenantRepository, MembershipError, MembershipPolicy, TenantError } from "@core/identity-access";
+import { type IMembershipRepository, type ITenantRepository, MembershipError, MembershipPolicy } from "@core/identity-access";
 import { AdmissionError } from "@core/shared-kernel";
 import { type MembershipView, toMembershipView } from "../identity-access.views";
 import type { RemoveMemberCommand } from "./remove-member.schema";
@@ -15,7 +15,7 @@ export class RemoveMemberHandler {
 
 	async execute(command: RemoveMemberCommand): Promise<MembershipView> {
 		const tenantId = this.context.tenant;
-		if (!(await this.tenants.lock(tenantId))) throw new TenantError("tenant_not_found");
+		await this.tenants.lock(tenantId);
 
 		const actor = await this.memberships.findActive(tenantId, this.context.actor);
 		if (!actor) throw new AdmissionError("not_a_member");
@@ -23,7 +23,7 @@ export class RemoveMemberHandler {
 		const target = await this.memberships.findActive(tenantId, command.userId);
 		if (!target) throw new MembershipError("member_not_found");
 		MembershipPolicy.assertCanRemove(actor, target);
-		MembershipPolicy.assertKeepsOwner(target, await this.memberships.countActiveOwners(tenantId));
+		if (target.isOwner()) MembershipPolicy.assertKeepsOwner(target, await this.memberships.countActiveOwners(tenantId));
 
 		const removed = target.remove(this.now());
 		await this.memberships.update(removed);
