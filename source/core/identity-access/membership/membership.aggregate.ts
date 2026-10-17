@@ -11,6 +11,8 @@ export interface MembershipState extends EntityState<MembershipId> {
 
 export type MembershipEnrollOwnerInput = Pick<MembershipState, "id" | "tenantId" | "userId">;
 
+export type MembershipJoinInput = Pick<MembershipState, "id" | "tenantId" | "userId" | "role">;
+
 export class Membership extends Entity<MembershipState>() {
 	private constructor(state: MembershipState) {
 		super(state);
@@ -18,6 +20,10 @@ export class Membership extends Entity<MembershipState>() {
 
 	static enrollOwner(input: MembershipEnrollOwnerInput, now: Date): Membership {
 		return new Membership({ ...input, role: "owner", createdAt: now, removedAt: null });
+	}
+
+	static join(input: MembershipJoinInput, now: Date): Membership {
+		return new Membership({ ...input, createdAt: now, removedAt: null });
 	}
 
 	isActive(): boolean {

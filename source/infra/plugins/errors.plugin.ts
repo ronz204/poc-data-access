@@ -1,4 +1,4 @@
-import { AdmissionError, DomainError, PrimitiveError } from "@core/shared-kernel";
+import { AdmissionError, DomainError, PaginationError, PrimitiveError } from "@core/shared-kernel";
 import { Elysia, type ValidationError } from "elysia";
 import { REQUEST_ID_HEADER } from "./tracing.plugin";
 
@@ -31,11 +31,12 @@ export function domainProblem<C extends string>(
 	return problem(scope, statuses[error.code], error.code, error.message, details);
 }
 
-const SHARED_STATUSES: StatusMap<PrimitiveError["code"] | AdmissionError["code"]> = {
+const SHARED_STATUSES: StatusMap<PrimitiveError["code"] | AdmissionError["code"] | PaginationError["code"]> = {
 	invalid_identifier: 422,
 	invalid_literal: 422,
 	invalid_email: 422,
 	not_a_member: 403,
+	invalid_cursor: 422,
 };
 
 function issuesOf(error: Readonly<ValidationError>) {
@@ -68,7 +69,7 @@ export class ErrorsPlugin {
 					return problem(set, 404, "not_found", "the route does not exist");
 			}
 
-			if (error instanceof PrimitiveError || error instanceof AdmissionError) {
+			if (error instanceof PrimitiveError || error instanceof AdmissionError || error instanceof PaginationError) {
 				return domainProblem(set, error, SHARED_STATUSES);
 			}
 

@@ -19,3 +19,34 @@ export const toMembershipView = (membership: Membership): MembershipView => ({
 	createdAt: membership.createdAt.toISOString(),
 	removedAt: membership.removedAt?.toISOString() ?? null,
 });
+
+export const InvitationView = z.object({
+	id: z.uuid(),
+	email: z.string(),
+	role: z.string(),
+	status: z.string(),
+	expiresAt: z.iso.datetime(),
+	createdAt: z.iso.datetime(),
+	acceptedAt: z.iso.datetime().nullable(),
+});
+export type InvitationView = z.infer<typeof InvitationView>;
+
+export interface InvitationSource {
+	readonly id: string;
+	readonly email: string;
+	readonly role: string;
+	readonly status: string;
+	readonly expiresAt: Date;
+	readonly createdAt: Date;
+	readonly acceptedAt: Date | null;
+}
+
+export const toInvitationView = (invitation: InvitationSource): InvitationView => ({
+	id: invitation.id,
+	email: invitation.email,
+	role: invitation.role,
+	status: invitation.status,
+	expiresAt: invitation.expiresAt.toISOString(),
+	createdAt: invitation.createdAt.toISOString(),
+	acceptedAt: invitation.acceptedAt?.toISOString() ?? null,
+});
