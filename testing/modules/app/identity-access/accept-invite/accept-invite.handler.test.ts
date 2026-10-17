@@ -1,6 +1,6 @@
 import { AcceptInviteHandler } from "@app/identity-access/accept-invite/accept-invite.handler";
 import { toAcceptInviteCommand } from "@app/identity-access/accept-invite/accept-invite.schema";
-import { DAY, hashOf, idOf, invitationFor, NOW } from "@testing/utilities/invitation.fixtures";
+import { DAY, idOf, invitationFor, NOW, vaultOf } from "@testing/utilities/invitation.fixtures";
 import { seedTenant, TENANT, userOf } from "@testing/utilities/membership.fixtures";
 import { InMemoryInvitationRepository } from "@testing/utilities/invitation.memory";
 import { InMemoryUserRepository } from "@testing/utilities/user.memory";
@@ -25,7 +25,7 @@ function setup(roles: Record<number, MembershipRole> = { 1: "owner" }) {
 		RunContext.system("invitation", TENANT),
 		() => NOW,
 		() => idOf(++counter),
-		hashOf,
+		vaultOf(),
 	);
 	return { tenants, users, memberships, invitations, handler };
 }
@@ -115,7 +115,7 @@ describe("AcceptInviteHandler", () => {
 		const other = TenantId.parse("0192f3a4-5b6c-7d8e-9f01-000000000002");
 		tenants.stored.set(other, tenants.stored.get(TENANT)!);
 		const foreign = new AcceptInviteHandler(
-			tenants, users, memberships, invitations, RunContext.system("invitation", other), () => NOW, () => idOf(900), hashOf,
+			tenants, users, memberships, invitations, RunContext.system("invitation", other), () => NOW, () => idOf(900), vaultOf(),
 		);
 
 		await expect(foreign.execute(accept(TOKEN, "Gus"))).rejects.toMatchObject({ code: "invitation_invalid" });
@@ -131,7 +131,7 @@ describe("AcceptInviteHandler", () => {
 	it("needs a tenant in the run context and no actor", async () => {
 		const { tenants, users, memberships, invitations } = setup();
 		const platform = new AcceptInviteHandler(
-			tenants, users, memberships, invitations, RunContext.platform(userOf(1)), () => NOW, () => idOf(1), hashOf,
+			tenants, users, memberships, invitations, RunContext.platform(userOf(1)), () => NOW, () => idOf(1), vaultOf(),
 		);
 		await expect(platform.execute(accept())).rejects.toThrow("needs a tenant");
 	});

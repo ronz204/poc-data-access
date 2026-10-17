@@ -30,6 +30,12 @@ describe("LeaveTenantHandler", () => {
 		expect(await memberships.countActiveOwners(TENANT)).toBe(1);
 	});
 
+	it("counts owners only when the leaver is one", async () => {
+		const { handler, memberships } = setup({ 1: "member", 2: "owner" });
+		await handler.execute();
+		expect(memberships.ownerCounts).toBe(0);
+	});
+
 	it("rejects the last owner leaving", async () => {
 		const { handler, memberships } = setup({ 1: "owner", 2: "member" });
 		await expect(handler.execute()).rejects.toMatchObject({ code: "last_owner" });

@@ -1,6 +1,7 @@
 import { Membership, MembershipId, Tenant, TenantName } from "@core/identity-access";
 import { InMemoryMembershipRepository, InMemoryTenantRepository } from "./tenant.memory";
 import { type MembershipRole, TenantId, UserId } from "@core/shared-kernel";
+import { InMemoryUserRepository } from "./user.memory";
 import { RunContext } from "@dal/dal.contexter";
 
 export const SEED_TIME = new Date("2026-01-01T00:00:00.000Z");
@@ -8,9 +9,9 @@ export const TENANT = TenantId.parse("0192f3a4-5b6c-7d8e-9f01-000000000001");
 
 export const userOf = (n: number) => UserId.parse(`0192f3a4-5b6c-7d8e-9f01-1000000000${String(n).padStart(2, "0")}`);
 
-export function seedTenant(roles: Readonly<Record<number, MembershipRole>>) {
+export function seedTenant(roles: Readonly<Record<number, MembershipRole>>, users = new InMemoryUserRepository()) {
 	const tenants = new InMemoryTenantRepository();
-	const memberships = new InMemoryMembershipRepository();
+	const memberships = new InMemoryMembershipRepository(users);
 	tenants.stored.set(TENANT, Tenant.create({ id: TENANT, name: TenantName.parse("Acme") }, SEED_TIME));
 
 	for (const [n, role] of Object.entries(roles)) {
@@ -19,7 +20,7 @@ export function seedTenant(roles: Readonly<Record<number, MembershipRole>>) {
 		memberships.stored.set(id, Membership.restore({ id, tenantId: TENANT, userId, role, createdAt: SEED_TIME, removedAt: null }));
 	}
 
-	return { tenants, memberships };
+	return { tenants, memberships, users };
 }
 
 export const asActor = (n: number) => RunContext.tenant(TENANT, userOf(n));

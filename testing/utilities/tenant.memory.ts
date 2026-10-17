@@ -1,13 +1,14 @@
-import type { IMembershipRepository, ITenantRepository, Membership, MembershipId, Tenant } from "@core/identity-access";
-import type { TenantId, UserId } from "@core/shared-kernel";
+import { type IMembershipRepository, type ITenantRepository, type Membership, type MembershipId, type Tenant, TenantError } from "@core/identity-access";
+import type { Email, TenantId, UserId } from "@core/shared-kernel";
+import { InMemoryUserRepository } from "./user.memory";
 
 export class InMemoryTenantRepository implements ITenantRepository {
 	readonly stored = new Map<TenantId, Tenant>();
 	readonly locked: TenantId[] = [];
 
-	async lock(id: TenantId): Promise<Tenant | null> {
+	async lock(id: TenantId): Promise<void> {
+		if (!this.stored.has(id)) throw new TenantError("tenant_not_found");
 		this.locked.push(id);
-		return this.stored.get(id) ?? null;
 	}
 
 	async insert(tenant: Tenant): Promise<void> {
@@ -18,6 +19,8 @@ export class InMemoryTenantRepository implements ITenantRepository {
 export class InMemoryMembershipRepository implements IMembershipRepository {
 	readonly stored = new Map<MembershipId, Membership>();
 
+	constructor(private readonly users = new InMemoryUserRepository()) {}
+
 	async findActive(tenantId: TenantId, userId: UserId): Promise<Membership | null> {
 		for (const membership of this.stored.values()) {
 			if (membership.tenantId === tenantId && membership.userId === userId && membership.isActive()) return membership;
@@ -25,7 +28,15 @@ export class InMemoryMembershipRepository implements IMembershipRepository {
 		return null;
 	}
 
+	async findActiveByEmail(tenantId: TenantId, email: Email): Promise<Membership | null> {
+		const user = await this.users.findByEmail(email);
+		return user ? this.findActive(tenantId, user.id) : null;
+	}
+
+	ownerCounts = 0;
+
 	async countActiveOwners(tenantId: TenantId): Promise<number> {
+		this.ownerCounts++;
 		return [...this.stored.values()].filter((m) => m.tenantId === tenantId && m.role === "owner" && m.isActive()).length;
 	}
 

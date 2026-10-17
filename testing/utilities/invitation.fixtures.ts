@@ -1,4 +1,4 @@
-import { Invitation, InvitationId, type InvitationRole, TokenHash } from "@core/identity-access";
+import { type ITokenVault, Invitation, InvitationId, type InvitationRole, TokenHash } from "@core/identity-access";
 import { createHash } from "node:crypto";
 import { Email } from "@core/shared-kernel";
 import { TENANT, userOf } from "./membership.fixtures";
@@ -7,6 +7,12 @@ export const NOW = new Date("2026-03-01T00:00:00.000Z");
 export const DAY = 24 * 60 * 60 * 1000;
 
 export const hashOf = (token: string) => createHash("sha256").update(token).digest("hex");
+
+export const tokenHashOf = (token: string) => TokenHash.parse(hashOf(token));
+
+export function vaultOf(minted = "clear-secret-token"): ITokenVault {
+	return { mint: () => ({ token: minted, hash: tokenHashOf(minted) }), hash: tokenHashOf };
+}
 
 export const idOf = (n: number) => `0192f3a4-5b6c-7d8e-9f01-30000000${String(n).padStart(4, "0")}`;
 

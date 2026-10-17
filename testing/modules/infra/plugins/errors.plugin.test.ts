@@ -25,6 +25,9 @@ const app = new Elysia()
 	.get("/not-a-member", () => {
 		throw new AdmissionError("not_a_member");
 	})
+	.get("/insufficient-role", () => {
+		throw new AdmissionError("insufficient_role");
+	})
 	.get("/bad-cursor", () => Cursor.decode("garbage"))
 	.get("/boom", () => {
 		throw new Error("select * from secrets where password = 'hunter2'");
@@ -84,6 +87,12 @@ describe("ErrorsPlugin", () => {
 		const reply = await call(app, "/not-a-member");
 		expect(reply.status).toBe(403);
 		expect(reply.body).toMatchObject({ code: "not_a_member" });
+	});
+
+	it("answers 403 for an actor whose role does not allow the action", async () => {
+		const reply = await call(app, "/insufficient-role");
+		expect(reply.status).toBe(403);
+		expect(reply.body).toMatchObject({ code: "insufficient_role" });
 	});
 
 	it("answers 422 for a cursor the list did not issue", async () => {

@@ -37,7 +37,14 @@ describe("CreateTenantHandler", () => {
 			id: IDS[0],
 			name: "Acme",
 			createdAt: "2026-01-01T00:00:00.000Z",
-			ownerMembership: { id: IDS[1], userId: ACTOR, role: "owner" },
+			ownerMembership: {
+				id: IDS[1],
+				tenantId: IDS[0],
+				userId: ACTOR,
+				role: "owner",
+				createdAt: "2026-01-01T00:00:00.000Z",
+				removedAt: null,
+			},
 		});
 	});
 

@@ -45,6 +45,12 @@ describe("ChangeRoleHandler", () => {
 		expect((await memberships.findActive(TENANT, userOf(1)))?.role).toBe("owner");
 	});
 
+	it("counts owners only when the target is one", async () => {
+		const { handler, memberships } = setup({ 1: "owner", 2: "member" });
+		await handler.execute(change(2, "admin"));
+		expect(memberships.ownerCounts).toBe(0);
+	});
+
 	it("skips the write when the role does not change, even for the last owner", async () => {
 		const { handler } = setup({ 1: "owner" });
 		expect(await handler.execute(change(1, "owner"))).toMatchObject({ role: "owner" });

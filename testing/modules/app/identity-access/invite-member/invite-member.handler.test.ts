@@ -1,9 +1,8 @@
 import { InviteMemberHandler } from "@app/identity-access/invite-member/invite-member.handler";
 import { toInviteMemberCommand } from "@app/identity-access/invite-member/invite-member.schema";
-import { DAY, hashOf, idOf, invitationFor, NOW } from "@testing/utilities/invitation.fixtures";
+import { DAY, hashOf, idOf, invitationFor, NOW, vaultOf } from "@testing/utilities/invitation.fixtures";
 import { asActor, seedTenant, TENANT, userOf } from "@testing/utilities/membership.fixtures";
 import { InMemoryInvitationRepository } from "@testing/utilities/invitation.memory";
-import { InMemoryUserRepository } from "@testing/utilities/user.memory";
 import { Email, type MembershipRole } from "@core/shared-kernel";
 import { User, UserName } from "@core/identity-access";
 import { describe, expect, it } from "vitest";
@@ -12,19 +11,16 @@ const TOKEN = "clear-secret-token";
 const invite = (email: string, role: string) => toInviteMemberCommand({ email, role });
 
 function setup(roles: Record<number, MembershipRole>, actor = 1) {
-	const { memberships } = seedTenant(roles);
-	const users = new InMemoryUserRepository();
+	const { memberships, users } = seedTenant(roles);
 	const invitations = new InMemoryInvitationRepository();
 	let counter = 0;
 	const handler = new InviteMemberHandler(
-		users,
 		memberships,
 		invitations,
 		asActor(actor),
 		() => NOW,
 		() => idOf(++counter),
-		() => TOKEN,
-		hashOf,
+		vaultOf(TOKEN),
 	);
 	return { users, memberships, invitations, handler };
 }

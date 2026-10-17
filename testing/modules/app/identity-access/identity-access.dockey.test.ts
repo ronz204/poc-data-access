@@ -51,9 +51,10 @@ describe("IdentityAccessDockey", () => {
 		expect(scope.resolve(modules.identity.IdentityAccessDockey.AdmitActor)).toBeDefined();
 	});
 
-	it("resolves the invitation handlers", () => {
+	it("resolves the invitation handlers and the token vault", () => {
 		const { scope } = runScope();
 		const { InviteMember, LocateInvite, AcceptInvite, RevokeInvite, ListInvites } = modules.identity.IdentityAccessDockey;
+		expect(scope.resolve(modules.identity.IdentityAccessDockey.TokenVault)).toBeDefined();
 		expect(scope.resolve(InviteMember)).toBeDefined();
 		expect(scope.resolve(LocateInvite)).toBeDefined();
 		expect(scope.resolve(AcceptInvite)).toBeDefined();
@@ -73,24 +74,6 @@ describe("IdentityAccessDockey", () => {
 		const { scope } = runScope();
 		const token = modules.identity.IdentityAccessDockey.SignUpUser;
 		expect(scope.resolve(token)).not.toBe(scope.resolve(token));
-	});
-});
-
-describe("SystemDockey tokens", () => {
-	it("generates distinct high-entropy url-safe tokens", () => {
-		const { container } = runScope();
-		const newToken = container.resolve(modules.system.SystemDockey.NewToken);
-		const [first, second] = [newToken(), newToken()];
-		expect(first).not.toBe(second);
-		expect(first).toMatch(/^[A-Za-z0-9_-]{43}$/);
-	});
-
-	it("hashes a token to a stable sha-256 hex digest", () => {
-		const { container } = runScope();
-		const hash = container.resolve(modules.system.SystemDockey.HashToken);
-		expect(hash("secret")).toBe("2bb80d537b1da3e38bd30361aa855686bde0eacd7162fef6a25fe97bf527a25b");
-		expect(hash("secret")).toBe(hash("secret"));
-		expect(hash("secret")).not.toBe(hash("Secret"));
 	});
 });
 

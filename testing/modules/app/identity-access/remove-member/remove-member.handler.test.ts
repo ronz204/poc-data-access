@@ -73,6 +73,14 @@ describe("RemoveMemberHandler", () => {
 		await expect(handler.execute(remove(2))).rejects.toMatchObject({ code: "not_a_member" });
 	});
 
+	it("counts owners only when the target is one", async () => {
+		const { handler, memberships } = setup({ 1: "owner", 2: "member", 3: "owner" });
+		await handler.execute(remove(2));
+		expect(memberships.ownerCounts).toBe(0);
+		await handler.execute(remove(3));
+		expect(memberships.ownerCounts).toBe(1);
+	});
+
 	it("keeps the creation time of the removed membership", async () => {
 		const { handler } = setup({ 1: "owner", 2: "member" });
 		expect((await handler.execute(remove(2))).createdAt).toBe(SEED_TIME.toISOString());

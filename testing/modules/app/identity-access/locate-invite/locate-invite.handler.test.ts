@@ -1,6 +1,6 @@
 import { LocateInviteHandler } from "@app/identity-access/locate-invite/locate-invite.handler";
 import { toLocateInviteCommand } from "@app/identity-access/locate-invite/locate-invite.schema";
-import { hashOf, invitationFor } from "@testing/utilities/invitation.fixtures";
+import { invitationFor, vaultOf } from "@testing/utilities/invitation.fixtures";
 import { InMemoryInvitationRepository } from "@testing/utilities/invitation.memory";
 import { TENANT } from "@testing/utilities/membership.fixtures";
 import { describe, expect, it } from "vitest";
@@ -11,12 +11,12 @@ describe("LocateInviteHandler", () => {
 		const invitation = invitationFor(1, "token");
 		await invitations.insert(invitation.revoke());
 
-		const handler = new LocateInviteHandler(invitations, hashOf);
+		const handler = new LocateInviteHandler(invitations, vaultOf());
 		expect(await handler.execute(toLocateInviteCommand({ token: "token" }))).toEqual({ tenantId: TENANT });
 	});
 
 	it("answers an unknown token as an invalid invitation", async () => {
-		const handler = new LocateInviteHandler(new InMemoryInvitationRepository(), hashOf);
+		const handler = new LocateInviteHandler(new InMemoryInvitationRepository(), vaultOf());
 		await expect(handler.execute(toLocateInviteCommand({ token: "nope" }))).rejects.toMatchObject({ code: "invitation_invalid" });
 	});
 });
