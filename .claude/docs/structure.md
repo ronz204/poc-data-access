@@ -17,16 +17,16 @@ Stack, runtime topology and cross-cutting patterns. The data model and database 
 | DI container | dockdi | Wires the Transactor, repositories and use cases; keys are classes. |
 | Validation | zod | Validates external input at the boundary. |
 | Queue | BullMQ on Redis | Receives outbox events as jobs and runs the consumer with its own retry and backoff; Postgres stays the source of truth. |
-| HTTP layer (planned) | Elysia | Typed routes in front of the use cases, with the header and error mapping the scripts do not need. Not built yet. |
+| HTTP layer | Elysia | Typed routes in front of the use cases. zod schemas are passed to it directly for validation and converted to JSON Schema for the OpenAPI document. |
 | Ids | UUID v7, generated in the application | Time-ordered ids that suit keyset pagination and index locality; known before insert. |
 | Seeding | drizzle-seed | Generates large datasets to compare pagination strategies. |
 
 ## Topology
 
-An application process, an outbox worker process and a queue consumer process, plus PostgreSQL and Redis containers. Today there is no network surface: entry points are scripts that simulate requests. An Elysia HTTP layer is planned to sit in front of the same use cases.
+An application process, an outbox worker process and a queue consumer process, plus PostgreSQL and Redis containers. The application process is an Elysia HTTP service whose public routes need no context headers; the tenant and actor headers arrive with the first tenant-scoped use case. The worker and consumer processes are not built yet.
 
 ```
-entry point (simulated request: actor + tenant; scripts today, Elysia planned)
+entry point (Elysia route; simulated actor + tenant)
    -> zod validation
    -> use case (application layer)
         -> Transactor: BEGIN, set tenant for the transaction

@@ -100,7 +100,7 @@ Responses never expose stack traces, SQL, or constraint or table names.
 
 ### Contract document
 
-The OpenAPI document is generated from the routes' schemas. The input schemas are the same zod schemas the boundary validates with. Every route appears with its request, its responses and its error codes. The document is regenerated, never edited by hand, and it is the only description of the HTTP contract. Compatibility of zod 4 with Elysia's schema support is verified at implementation; the fallback is to validate with the same zod schemas inside the handlers and build the document from them.
+The OpenAPI document is generated from the routes' schemas. The input schemas are the same zod schemas the boundary validates with. Every route appears with its request, its responses and its error codes. The document is regenerated, never edited by hand, and it is the only description of the HTTP contract. Elysia validates directly with the zod 4 schemas, and the document converts them with zod's own JSON Schema export.
 
 ### Lists
 
@@ -129,7 +129,7 @@ A separate entry point, apart from the outbox worker and the queue consumer. Con
 
 ### Current state
 
-Design only: there is no application, route or code. The slice depends on the use cases of the other slices, and routes are added slice by slice as each use case lands. When the stock refactor reaches its contract step, the stock routes are served by inventory.
+The Elysia application exists as its own process entry point. It assigns or echoes `X-Request-Id`, logs one structured line per request, maps validation, unknown routes, shared-kernel domain errors and persistence errors to problem+json, and lets each bounded context's plugin map its own domain errors. It serves `GET /health/live`, `GET /health/ready` (PostgreSQL only; the Redis check arrives with the outbox) and the OpenAPI document at `GET /v1/openapi.json`. It enforces the body limit and idle timeout, and on shutdown it stops the server and then closes the pool. The only business route so far is `POST /v1/users` (sign up). Not built yet: the tenant and platform context headers, admission, the idempotency header, the pagination envelope and the HTTP tests. Routes are added slice by slice as each use case lands. When the stock refactor reaches its contract step, the stock routes are served by inventory.
 
 ## Invariants
 
@@ -155,7 +155,6 @@ Design only: there is no application, route or code. The slice depends on the us
 - CORS, if a frontend appears.
 - A catalog page of error codes.
 - A deprecation policy beyond `/v1`.
-- Whether zod 4 works with Elysia's validation.
 - Whether `Idempotent-Replayed` is worth keeping.
 
 ## Acceptance criteria
@@ -179,4 +178,4 @@ Tests over the application handler against a real PostgreSQL and Redis, using vi
 
 ---
 
-Last updated: 2026-10-15.
+Last updated: 2026-10-16.

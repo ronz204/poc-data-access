@@ -76,7 +76,7 @@ A removed membership is kept; a user who returns gets a new row.
 
 ### Current state
 
-The three tables exist. `memberships` already has the shape above (its own `id`, `removed_at` and the partial unique index on active memberships), created by the second platform migration. Domain, use cases and repositories for this slice are not implemented, and the tables have no row-level policy yet.
+The three tables exist. `memberships` already has the shape above (its own `id`, `removed_at` and the partial unique index on active memberships), created by the second platform migration. The bounded context is `identity-access`. Sign up is implemented (the `User` aggregate, the shared-kernel `Email` value object, the user repository and the use case) and exposed as `POST /v1/users`, with a duplicate email answered as 409 `email_taken` and an invalid email or name as 422; the other use cases are not implemented yet, and the tables have no row-level policy yet.
 
 ## Invariants
 
@@ -94,7 +94,6 @@ The three tables exist. `memberships` already has the shape above (its own `id`,
 
 - How admission reads memberships once row-level security covers the platform tables: admission runs before the tenant is trusted, so it may need a dedicated read path. Decided in the roadmap's row-level security phase.
 - How Create tenant inserts the owner membership once `memberships` has its row-level policy: the run has no tenant, so a policy comparing the row's tenant with the transaction's would reject it. Candidates: an insert policy that admits the founding owner (the actor, for a tenant created in the same transaction), or declaring the new tenant's id when the run starts. Decided in the same phase; nothing fails before it, because the table has no policy yet.
-- The name of the core bounded-context folder for this slice (two-word kebab-case per the layering rule). Decided when the domain is implemented.
 - Renaming, suspending or deleting a tenant. Not specced until a slice needs it.
 
 ## Acceptance criteria
