@@ -8,7 +8,8 @@
     "db:reset": "docker compose down -v && docker compose up -d --wait",
     "service": "bun cmd/service.boot.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:database": "vitest run --config vitest.database.config.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",
