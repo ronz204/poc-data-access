@@ -24,7 +24,7 @@ Built so far: the database provisioning, the base migrations, the Transactor, th
 | `source/app/` | Use cases, one folder per bounded context, each with its own dockey and HTTP plugin |
 | `source/repos/` | Drizzle repository implementations (write side) and CQRS-lite read queries, mirroring core: one folder per bounded context and sub-slice, each repository beside its mapper |
 | `source/keys/` | Dockdi dockeys (`*.dockey.ts`) for infrastructure concerns shared across contexts, such as the database and the Transactor |
-| `source/infra/` | Plumbing: `plugins/` holds the HTTP plugins (request tracing, problem+json errors, health, API docs), each independent of the others, and, later, the worker |
+| `source/infra/` | Plumbing: `plugins/` holds the HTTP plugins (request tracing, problem+json errors, health, API docs), each independent of the others, `adapters/` holds implementations of core contracts that wrap an external library (the token vault), and, later, the worker |
 | `testing/` | Vitest tests: `modules/` mirrors `source/` one test file per source file, `utilities/` holds the shared test harness |
 | `drizzle/dal/` | Data-access layer, including the Transactor |
 | `drizzle/database/` | Drizzle schema definitions per Postgres schema, policies, helpers |
