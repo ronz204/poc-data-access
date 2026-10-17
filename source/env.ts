@@ -6,4 +6,4 @@ const schema = z.object({
 	SERVICE_PORT: z.coerce.number().int().positive().default(3000),
 });
 
-export const env = schema.parse(Bun.env);
+export const env = schema.parse(process.env);
