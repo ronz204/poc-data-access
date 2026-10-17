@@ -2,6 +2,7 @@ import { SignUpUserHandler } from "@app/identity-access/sign-up-user/sign-up-use
 import { UserRepository } from "@repos/identity-access/user/user.repository";
 import type { IUserRepository } from "@core/identity-access";
 import { type Module, token } from "dockdi";
+import { SystemDockey } from "@keys/system.dockey";
 import { DataDockey } from "@keys/data.dockey";
 
 export class IdentityAccessDockey {
@@ -11,7 +12,11 @@ export class IdentityAccessDockey {
 	static module(): Module {
 		return (container) => {
 			container.bind(IdentityAccessDockey.UserRepository).toClass(UserRepository, [DataDockey.Executor]);
-			container.bind(IdentityAccessDockey.SignUpUser).toClass(SignUpUserHandler, [IdentityAccessDockey.UserRepository]);
+			container.bind(IdentityAccessDockey.SignUpUser).toClass(SignUpUserHandler, [
+				IdentityAccessDockey.UserRepository,
+				SystemDockey.Clock,
+				SystemDockey.NewId,
+			]);
 		};
 	}
 }
