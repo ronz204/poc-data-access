@@ -19,4 +19,16 @@ export class Membership extends Entity<MembershipState>() {
 	static enrollOwner(input: MembershipEnrollOwnerInput, now: Date): Membership {
 		return new Membership({ ...input, role: "owner", createdAt: now, removedAt: null });
 	}
+
+	isActive(): boolean {
+		return this.removedAt === null;
+	}
+
+	changeRole(role: MembershipRole): Membership {
+		return role === this.role ? this : this.with({ role });
+	}
+
+	remove(now: Date): Membership {
+		return this.with({ removedAt: now });
+	}
 }

@@ -1,5 +1,6 @@
 export * from "./membership/membership.aggregate";
 export * from "./membership/membership.errors";
+export * from "./membership/membership.policies";
 export * from "./membership/membership.repo";
 export * from "./membership/membership.vos";
 export * from "./tenant/tenant.aggregate";
