@@ -1,48 +1,49 @@
 import type { PostgresJsQueryResultHKT } from "drizzle-orm/postgres-js";
 import type { PgAsyncDatabase } from "drizzle-orm/pg-core";
-import type { SlapContext } from "./dal.contexter";
+import type { RunContext } from "./dal.contexter";
 import type { Container, Token } from "dockdi";
 import { PoliciesHelper } from "@db/helpers/policies.helper";
 import { ErrorClassifier } from "./dal.classifier";
 import { sql } from "drizzle-orm";
 
-export type Executor = PgAsyncDatabase<PostgresJsQueryResultHKT>;
+export type RunExecutor = PgAsyncDatabase<PostgresJsQueryResultHKT>;
+
 export interface TransactorTokens {
-	readonly Slap: Token<Executor>;
-	readonly Context: Token<SlapContext>;
+	readonly Executor: Token<RunExecutor>;
+	readonly Context: Token<RunContext>;
 }
 
 export class Transactor {
 	constructor(
 		private readonly container: Container,
-		private readonly database: Executor,
+		private readonly database: RunExecutor,
 		private readonly tokens: TransactorTokens,
 	) {}
 
-	async run<S, R>(context: SlapContext, entry: Token<S>, work: (service: S) => Promise<R>): Promise<R> {
+	async run<S, R>(context: RunContext, entry: Token<S>, work: (service: S) => Promise<R>): Promise<R> {
 		try {
-			return await this.database.transaction(async (slap) => {
-				await Transactor.apply(slap, context);
-				return work(this.open(slap, context).resolve(entry));
+			return await this.database.transaction(async (executor) => {
+				await Transactor.apply(executor, context);
+				return work(this.open(executor, context).resolve(entry));
 			});
 		} catch (error) {
 			throw ErrorClassifier.normalize(error);
 		}
 	}
 
-	private static async apply(slap: Executor, context: SlapContext): Promise<void> {
+	private static async apply(executor: RunExecutor, context: RunContext): Promise<void> {
 		const { tenantKey, actorKey, originKey } = PoliciesHelper;
 
-		await slap.execute(sql`select
+		await executor.execute(sql`select
 			set_config(${tenantKey}, ${context.tenantId ?? ""}, true),
 			set_config(${actorKey}, ${context.actorId ?? ""}, true),
 			set_config(${originKey}, ${context.origin}, true)`);
 	}
 
-	private open(slap: Executor, context: SlapContext): Container {
+	private open(executor: RunExecutor, context: RunContext): Container {
 		const scope = this.container.scope();
 
-		scope.bind(this.tokens.Slap).toValue(slap);
+		scope.bind(this.tokens.Executor).toValue(executor);
 		scope.bind(this.tokens.Context).toValue(context);
 		return scope;
 	}

@@ -1,7 +1,7 @@
 import type { TenantId, UserId } from "@core/shared-kernel";
 import { TransactionScopeError } from "./dal.exceptions";
 
-export class SlapContext {
+export class RunContext {
 	private constructor(
 		readonly tenantId: TenantId | null,
 		readonly actorId: UserId | null,
@@ -11,16 +11,16 @@ export class SlapContext {
 		Object.freeze(this);
 	}
 
-	static tenant(tenantId: TenantId, actorId: UserId, origin = "request"): SlapContext {
-		return new SlapContext(tenantId, actorId, origin);
+	static tenant(tenantId: TenantId, actorId: UserId, origin = "request"): RunContext {
+		return new RunContext(tenantId, actorId, origin);
 	}
 
-	static platform(actorId: UserId, origin = "request"): SlapContext {
-		return new SlapContext(null, actorId, origin);
+	static platform(actorId: UserId, origin = "request"): RunContext {
+		return new RunContext(null, actorId, origin);
 	}
 
-	static system(origin: string, tenantId?: TenantId): SlapContext {
-		return new SlapContext(tenantId ?? null, null, origin);
+	static system(origin: string, tenantId?: TenantId): RunContext {
+		return new RunContext(tenantId ?? null, null, origin);
 	}
 
 	get tenant(): TenantId {

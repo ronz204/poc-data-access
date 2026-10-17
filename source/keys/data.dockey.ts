@@ -1,16 +1,16 @@
-import type { SlapContext } from "@dal/dal.contexter";
-import { type Executor, Transactor } from "@dal/dal.transactor";
+import { type RunExecutor, Transactor } from "@dal/dal.transactor";
+import type { RunContext } from "@dal/dal.contexter";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { type Module, token } from "dockdi";
 import { env } from "@env";
 
-export class DataDockey {
-	static readonly Slap = token<Executor>("Slap");
-	static readonly Database = token<ReturnType<typeof drizzle>>("Database");
-	static readonly Context = token<SlapContext>("Context");
-	static readonly Transactor = token<Transactor>("Transactor");
+export type Database = ReturnType<typeof drizzle>;
 
-	static readonly Scoped = [DataDockey.Slap, DataDockey.Context] as const;
+export class DataDockey {
+	static readonly Database = token<Database>("Database");
+	static readonly Executor = token<RunExecutor>("Executor");
+	static readonly Context = token<RunContext>("Context");
+	static readonly Transactor = token<Transactor>("Transactor");
 
 	static module(): Module {
 		return (container) => {
